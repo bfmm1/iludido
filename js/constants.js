@@ -2,9 +2,12 @@
 const GRAVIDADE = 0.6;
 const TEMPO_ENTRE_ONDAS = 5000;
 const KILLS_PER_CHARGE = 10;
-const SPECIAL_PROJECTILE_SPEED = 4; // Velocidade do especial bem mais lenta
+const SPECIAL_PROJECTILE_SPEED = 4;
 const SPECIAL_DAMAGE = 100;
 const SPECIAL_EXPLOSION_RADIUS = 250;
+const MAX_VOLUME_MUSICA = 0.2;
+const MAX_VOLUME_TIRO = 0.1;
+const BOSS_VOICE_BOOST = 0.3;
 
 // --- Definições de Ondas e Upgrades ---
 const DEFINICOES_ONDAS = [
