@@ -278,7 +278,7 @@ class HealingOrb { constructor(x, y) { this.posicao = {x, y}; this.raio = 12; th
 
 // --- Constantes de Jogo e Balanceamento ---
 const GRAVIDADE = 0.6;
-const TEMPO_ENTRE_ONDAS = 5000;
+const TEMPO_ENTRE_ONDAS = 3000;
 const KILLS_PER_CHARGE = 10;
 const SPECIAL_PROJECTILE_SPEED = 4;
 const SPECIAL_DAMAGE = 100;
