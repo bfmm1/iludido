@@ -1,5 +1,214 @@
-class Plataforma { constructor(x, y, largura, altura) { this.posicao = { x, y }; this.largura = largura; this.altura = altura; } draw() { ctx.fillStyle = '#2c3e50'; ctx.fillRect(this.posicao.x, this.posicao.y, this.largura, this.altura); } }
-class Player { constructor() { Object.assign(this, { posicao: { x: canvas.width / 2 - 40, y: canvas.height - 150 }, velocidade: { x: 0, y: 0 }, largura: 80, altura: 90, velocidadeMovimento: 4, forcaPuloBase: 15, estaNoChao: false, direcaoVisual: 'parado', vidaMax: 100, vida: 100, exp: 0, nivel: 1, expParaProximoNivel: 100, danoProjetil: 10, chanceCritico: 0.05, defesa: 0, cooldownTiroBase: 800, ultimoTiro: 0, invencivel: false, tempoInvencivel: 500, timerInvencivel: 0, specialCharges: 3, maxSpecialCharges: 3, specialChargeProgress: 0, killsForNextCharge: 10, pickedUpgrades: [] }); this.pierceCount = 0; this.projectileSizeMultiplier = 1.0; this.critDamageMultiplier = 1.5; this.maxJumps = 1; this.currentJumps = 0; this.lifesteal = 0; this.contactDamage = 0; this.lastContactDamage = 0; this.hasBarrier = false; this.barrierActive = true; this.barrierCooldown = 10000; this.barrierTimer = 0; this.revives = 0; this.upgradeChoices = 3; this.distanceTraveledForFriction = 0; this.frictionProjectiles = 0; this.thunderbolts = { count: 0, cooldown: 5000, timer: 0 }; this.fragmentationCount = 0; this.hasColdEffect = false; this.hasRage = false; this.hpRegenPerEnemy = 0; this.hasFocus = false; this.focusTimer = 0; this.healingOrbChance = 0; } scalePlayer(factor) { this.largura *= factor; this.altura *= factor; } draw() { ctx.globalAlpha = this.invencivel ? 0.5 : 1.0; const sprites = { parado: assets.playerc, direita: assets.playerd, esquerda: assets.playere }; drawImageWithFallback(sprites[this.direcaoVisual], this.posicao.x, this.posicao.y, this.largura, this.altura, '#1e90ff'); ctx.globalAlpha = 1.0; if (this.hasBarrier && this.barrierActive) { ctx.beginPath(); ctx.arc(this.posicao.x + this.largura/2, this.posicao.y + this.altura/2, this.largura/2 + 5, 0, 2*Math.PI); ctx.strokeStyle = 'rgba(0, 255, 255, 0.7)'; ctx.lineWidth = 4; ctx.stroke(); } } update() { this.direcaoVisual = teclas.d.pressionada ? 'direita' : (teclas.a.pressionada ? 'esquerda' : 'parado'); this.velocidade.x = 0; if (teclas.a.pressionada && this.posicao.x > 0) this.velocidade.x = -this.velocidadeMovimento; if (teclas.d.pressionada && this.posicao.x + this.largura < canvas.width) this.velocidade.x = this.velocidadeMovimento; this.posicao.x += this.velocidade.x; this.distanceTraveledForFriction += Math.abs(this.velocidade.x); if (this.frictionProjectiles > 0 && this.distanceTraveledForFriction > 100) { for (let i = 0; i < this.frictionProjectiles; i++) { efeitosVisuais.push(new UpwardProjectile(this.posicao.x + this.largura / 2, this.posicao.y)); } this.distanceTraveledForFriction = 0; } this.velocidade.y += GRAVIDADE; this.posicao.y += this.velocidade.y; this.estaNoChao = false; plataformas.forEach(plataforma => { if (this.velocidade.y > 0 && this.posicao.y + this.altura >= plataforma.posicao.y && this.posicao.y + this.altura - this.velocidade.y <= plataforma.posicao.y && this.posicao.x + this.largura > plataforma.posicao.x && this.posicao.x < plataforma.posicao.x + plataforma.largura) { this.velocidade.y = 0; this.posicao.y = plataforma.posicao.y - this.altura; this.estaNoChao = true; this.currentJumps = this.maxJumps; } }); if (this.invencivel) { if ((this.timerInvencivel -= 16.67) <= 0) this.invencivel = false; } if (this.hasBarrier && !this.barrierActive) { if ((this.barrierTimer -= 16.67) <= 0) this.barrierActive = true; } if (this.thunderbolts.count > 0) { this.thunderbolts.timer -= 16.67; if (this.thunderbolts.timer <= 0) { for (let i = 0; i < this.thunderbolts.count; i++) { efeitosVisuais.push(new Thunderbolt(Math.random() * canvas.width)); } this.thunderbolts.timer = this.thunderbolts.cooldown; } } if (this.velocidade.x === 0 && this.hasFocus) { this.focusTimer += 16.67; } else { this.focusTimer = 0; } if (this.hpRegenPerEnemy > 0 && this.vida < this.vidaMax) { this.vida = Math.min(this.vidaMax, this.vida + (inimigos.length * this.hpRegenPerEnemy)); } } pular() { if (this.currentJumps > 0) { this.velocidade.y = -this.forcaPuloBase; this.currentJumps--; } } atirar() { let cooldownAtual = this.cooldownTiroBase; if (this.hasFocus && this.focusTimer > 0) { cooldownAtual /= (1 + this.focusTimer / 2000); } const agora = Date.now(); if (agora - this.ultimoTiro > cooldownAtual) { this.ultimoTiro = agora; const centro = { x: this.posicao.x + this.largura / 2, y: this.posicao.y + this.altura / 2 }; let dano = this.danoProjetil; if (this.hasRage) { const vidaPerdida = 1 - (this.vida / this.vidaMax); if(vidaPerdida > 0) dano *= (1 + vidaPerdida / 2); } let isCrit = Math.random() < this.chanceCritico; if (isCrit) { dano *= this.critDamageMultiplier; } if (bossFoiDerrotado) { const anguloPrincipal = Math.atan2(mouse.y - centro.y, mouse.x - centro.x); const spread = 45 * (Math.PI / 180); projeteis.push(new Projétil(centro.x, centro.y, dano, isCrit, anguloPrincipal)); projeteis.push(new Projétil(centro.x, centro.y, dano, isCrit, anguloPrincipal - spread / 2)); projeteis.push(new Projétil(centro.x, centro.y, dano, isCrit, anguloPrincipal + spread / 2)); } else { projeteis.push(new Projétil(centro.x, centro.y, dano, isCrit)); } if (assets.tiro) { assets.tiro.currentTime = 0; assets.tiro.volume = volumeEfeitosSlider * MAX_VOLUME_TIRO; assets.tiro.play(); } } } sofrerDano(dano) { if (this.invencivel) return; if (this.hasBarrier && this.barrierActive) { this.barrierActive = false; this.barrierTimer = this.barrierCooldown; this.invencivel = true; this.timerInvencivel = 200; return; } this.vida -= dano * (1 - this.defesa); this.invencivel = true; this.timerInvencivel = this.tempoInvencivel; if (this.vida <= 0) { if (this.revives > 0) { this.revives--; this.vida = this.vidaMax; inimigos.forEach(i => i.vida = 0); this.invencivel = true; this.timerInvencivel = 3000; } else { this.vida = 0; estadoDoJogo = 'gameOver'; } } } inimigoDerrotado(exp, tipo, scoreValue) { if (tipo === 'boss') { bossFoiDerrotado = true; } score += scoreValue; this.exp += exp; while (this.exp >= this.expParaProximoNivel) { this.exp -= this.expParaProximoNivel; this.nivel++; this.expParaProximoNivel = Math.floor(this.expParaProximoNivel * 1.5); estadoDoJogo = 'levelUp'; this.iniciarLevelUp(); } if (this.specialCharges < this.maxSpecialCharges) { this.specialChargeProgress++; if (this.specialChargeProgress >= KILLS_PER_CHARGE) { this.specialCharges++; this.specialChargeProgress = 0; } } } iniciarLevelUp() { const upgradesDisponiveis = todosOsUpgrades.filter(up => !up.unimplemented && (!up.maxPicks || this.pickedUpgrades.filter(p => p.nome === up.nome).length < up.maxPicks)); opcoesDeUpgrade = [...upgradesDisponiveis].sort(() => 0.5 - Math.random()).slice(0, this.upgradeChoices); } aplicarUpgrade(upgrade) { upgrade.aplicar(this); this.pickedUpgrades.push(upgrade); } usarEspecial() { if (this.specialCharges > 0 && ['rodando', 'entreOndas'].includes(estadoDoJogo)) { this.specialCharges--; efeitosVisuais.push(new SpecialProjectile(this.posicao.x + this.largura / 2, this.posicao.y + this.altura / 2)); ativarTextoEspecial("Kenner L7, paga só o frete"); } } }
+class Plataforma {
+    constructor(x, y, largura, altura) {
+        this.posicao = { x, y };
+        this.largura = largura;
+        this.altura = altura;
+    }
+    draw() {
+        ctx.fillStyle = '#2c3e50';
+        ctx.fillRect(this.posicao.x, this.posicao.y, this.largura, this.altura);
+    }
+}
+
+class Player {
+    constructor() {
+        // Atributos de Posição e Movimento
+        this.posicao = { x: canvas.width / 2 - 40, y: canvas.height - 150 };
+        this.velocidade = { x: 0, y: 0 };
+        this.largura = 80;
+        this.altura = 90;
+        this.velocidadeMovimento = 4;
+        this.forcaPuloBase = 15;
+        this.estaNoChao = false;
+        this.direcaoVisual = 'parado';
+
+        // Atributos de Jogo e Combate
+        this.vidaMax = 100;
+        this.vida = 100;
+        this.exp = 0;
+        this.nivel = 1;
+        this.expParaProximoNivel = 100;
+        this.danoProjetil = 10;
+        this.chanceCritico = 0.05;
+        this.defesa = 0;
+        this.cooldownTiroBase = 800;
+        this.ultimoTiro = 0;
+        this.invencivel = false;
+        this.tempoInvencivel = 500;
+        this.timerInvencivel = 0;
+        this.specialCharges = 3;
+        this.maxSpecialCharges = 3;
+        this.specialChargeProgress = 0;
+        this.killsForNextCharge = 10;
+        this.pickedUpgrades = [];
+        
+        // Propriedades dos Upgrades
+        this.pierceCount = 0;
+        this.projectileSizeMultiplier = 1.0;
+        this.critDamageMultiplier = 1.5;
+        this.maxJumps = 1;
+        this.currentJumps = 0;
+        this.lifesteal = 0;
+        this.contactDamage = 0;
+        this.lastContactDamage = 0;
+        this.hasBarrier = false;
+        this.barrierActive = true;
+        this.barrierCooldown = 10000;
+        this.barrierTimer = 0;
+        this.revives = 0;
+        this.upgradeChoices = 3;
+        this.distanceTraveledForFriction = 0;
+        this.frictionProjectiles = 0;
+        this.thunderbolts = { count: 0, cooldown: 5000, timer: 0 };
+        this.fragmentationCount = 0;
+        this.hasColdEffect = false;
+        this.hasRage = false;
+        this.hpRegenPerEnemy = 0;
+        this.hasFocus = false;
+        this.focusTimer = 0;
+        this.healingOrbChance = 0;
+    }
+
+    scalePlayer(factor) {
+        this.largura *= factor;
+        this.altura *= factor;
+    }
+
+    draw() {
+        ctx.globalAlpha = this.invencivel ? 0.5 : 1.0;
+        const sprites = { parado: assets.playerc, direita: assets.playerd, esquerda: assets.playere };
+        drawImageWithFallback(sprites[this.direcaoVisual], this.posicao.x, this.posicao.y, this.largura, this.altura, '#1e90ff');
+        ctx.globalAlpha = 1.0;
+        if (this.hasBarrier && this.barrierActive) {
+            ctx.beginPath();
+            ctx.arc(this.posicao.x + this.largura/2, this.posicao.y + this.altura/2, this.largura/2 + 5, 0, 2*Math.PI);
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.7)';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+        }
+    }
+
+    update() {
+        this.direcaoVisual = teclas.d.pressionada ? 'direita' : (teclas.a.pressionada ? 'esquerda' : 'parado');
+        this.velocidade.x = 0;
+        if (teclas.a.pressionada && this.posicao.x > 0) this.velocidade.x = -this.velocidadeMovimento;
+        if (teclas.d.pressionada && this.posicao.x + this.largura < canvas.width) this.velocidade.x = this.velocidadeMovimento;
+        this.posicao.x += this.velocidade.x;
+        this.distanceTraveledForFriction += Math.abs(this.velocidade.x);
+
+        if (this.frictionProjectiles > 0 && this.distanceTraveledForFriction > 100) {
+            for (let i = 0; i < this.frictionProjectiles; i++) {
+                efeitosVisuais.push(new UpwardProjectile(this.posicao.x + this.largura / 2, this.posicao.y));
+            }
+            this.distanceTraveledForFriction = 0;
+        }
+
+        this.velocidade.y += GRAVIDADE;
+        this.posicao.y += this.velocidade.y;
+        this.estaNoChao = false;
+        plataformas.forEach(plataforma => {
+            if (this.velocidade.y > 0 && this.posicao.y + this.altura >= plataforma.posicao.y && this.posicao.y + this.altura - this.velocidade.y <= plataforma.posicao.y && this.posicao.x + this.largura > plataforma.posicao.x && this.posicao.x < plataforma.posicao.x + plataforma.largura) {
+                this.velocidade.y = 0;
+                this.posicao.y = plataforma.posicao.y - this.altura;
+                this.estaNoChao = true;
+                this.currentJumps = this.maxJumps;
+            }
+        });
+
+        if (this.invencivel) { if ((this.timerInvencivel -= 16.67) <= 0) this.invencivel = false; }
+        if (this.hasBarrier && !this.barrierActive) { if ((this.barrierTimer -= 16.67) <= 0) this.barrierActive = true; }
+
+        if (this.thunderbolts.count > 0) {
+            this.thunderbolts.timer -= 16.67;
+            if (this.thunderbolts.timer <= 0) {
+                for (let i = 0; i < this.thunderbolts.count; i++) {
+                    efeitosVisuais.push(new Thunderbolt(Math.random() * canvas.width));
+                }
+                this.thunderbolts.timer = this.thunderbolts.cooldown;
+            }
+        }
+
+        if (this.velocidade.x === 0 && this.hasFocus) { this.focusTimer += 16.67; } else { this.focusTimer = 0; }
+        if (this.hpRegenPerEnemy > 0 && this.vida < this.vidaMax) { this.vida = Math.min(this.vidaMax, this.vida + (inimigos.length * this.hpRegenPerEnemy)); }
+    }
+    
+    pular() { if (this.currentJumps > 0) { this.velocidade.y = -this.forcaPuloBase; this.currentJumps--; } }
+    
+    atirar() {
+        let cooldownAtual = this.cooldownTiroBase;
+        if (this.hasFocus && this.focusTimer > 0) { cooldownAtual /= (1 + this.focusTimer / 2000); }
+        const agora = Date.now();
+        if (agora - this.ultimoTiro > cooldownAtual) {
+            this.ultimoTiro = agora;
+            const centro = { x: this.posicao.x + this.largura / 2, y: this.posicao.y + this.altura / 2 };
+            let dano = this.danoProjetil;
+            if (this.hasRage) { const vidaPerdida = 1 - (this.vida / this.vidaMax); if(vidaPerdida > 0) dano *= (1 + vidaPerdida / 2); }
+            let isCrit = Math.random() < this.chanceCritico;
+            if (isCrit) { dano *= this.critDamageMultiplier; }
+
+            if (bossFoiDerrotado) { const anguloPrincipal = Math.atan2(mouse.y - centro.y, mouse.x - centro.x); const spread = 45 * (Math.PI / 180); projeteis.push(new Projétil(centro.x, centro.y, dano, isCrit, anguloPrincipal)); projeteis.push(new Projétil(centro.x, centro.y, dano, isCrit, anguloPrincipal - spread / 2)); projeteis.push(new Projétil(centro.x, centro.y, dano, isCrit, anguloPrincipal + spread / 2)); }
+            else { projeteis.push(new Projétil(centro.x, centro.y, dano, isCrit)); }
+            
+            if (assets.tiro) { assets.tiro.currentTime = 0; assets.tiro.volume = volumeEfeitosSlider * MAX_VOLUME_TIRO; assets.tiro.play(); }
+        }
+    }
+
+    sofrerDano(dano) {
+        if (this.invencivel) return;
+        if (this.hasBarrier && this.barrierActive) { this.barrierActive = false; this.barrierTimer = this.barrierCooldown; this.invencivel = true; this.timerInvencivel = 200; return; }
+        this.vida -= dano * (1 - this.defesa);
+        this.invencivel = true;
+        this.timerInvencivel = this.tempoInvencivel;
+        if (this.vida <= 0) {
+            if (this.revives > 0) {
+                this.revives--; this.vida = this.vidaMax;
+                inimigos.forEach(i => i.vida = 0);
+                this.invencivel = true; this.timerInvencivel = 3000;
+            } else {
+                this.vida = 0; estadoDoJogo = 'gameOver';
+            }
+        }
+    }
+
+    inimigoDerrotado(exp, tipo, scoreValue) {
+        if (tipo === 'boss') { bossFoiDerrotado = true; }
+        score += scoreValue;
+        this.exp += exp;
+        while (this.exp >= this.expParaProximoNivel) {
+            this.exp -= this.expParaProximoNivel;
+            this.nivel++;
+            this.expParaProximoNivel = Math.floor(this.expParaProximoNivel * 1.5);
+            estadoDoJogo = 'levelUp';
+            this.iniciarLevelUp();
+        }
+        if (this.specialCharges < this.maxSpecialCharges) {
+            this.specialChargeProgress++;
+            if (this.specialChargeProgress >= KILLS_PER_CHARGE) {
+                this.specialCharges++;
+                this.specialChargeProgress = 0;
+            }
+        }
+    }
+
+    iniciarLevelUp() {
+        const upgradesDisponiveis = todosOsUpgrades.filter(up => {
+            if (up.unimplemented) return false;
+            if (up.maxPicks) {
+                return this.pickedUpgrades.filter(p => p.nome === up.nome).length < up.maxPicks;
+            }
+            return true;
+        });
+        opcoesDeUpgrade = [...upgradesDisponiveis].sort(() => 0.5 - Math.random()).slice(0, this.upgradeChoices);
+    }
+
+    aplicarUpgrade(upgrade) {
+        upgrade.aplicar(this);
+        this.pickedUpgrades.push(upgrade);
+    }
+
+    usarEspecial() { if (this.specialCharges > 0 && ['rodando', 'entreOndas'].includes(estadoDoJogo)) { this.specialCharges--; efeitosVisuais.push(new SpecialProjectile(this.posicao.x + this.largura / 2, this.posicao.y + this.altura / 2)); ativarTextoEspecial("Kenner L7, paga só o frete"); } }
+}
+
 class Inimigo { constructor(x, y, tipo) { Object.assign(this, { tipo, posicao: { x, y }, vida: 0, velocidadeY: 1.0 + (ondaAtual * 0.05), velocidadeX: (0.5 + ondaAtual * 0.1) * (Math.random() < 0.5 ? 1 : -1), alvoY: canvas.height * 0.6 - Math.random() * 200, ultimoTiro: Date.now() + Math.random() * 2000, patrulhaRange: 40 + Math.random() * 40, patrulhaSpeed: (Math.random() * 0.05 + 0.02) / 1000, spawnTimestamp: Date.now(), podeMoverHorizontalmente: false }); this.vidaMax = 20 + ondaAtual * 5; this.danoTiro = 5 + Math.floor(ondaAtual * 1.5); this.slowModifier = 1.0; if (tipo === 'tipo1') { Object.assign(this, { imagem: assets.inimigo1, largura: 40, altura: 40, expConcedida: 35, scoreValue: 100, cooldownTiroBase: 3000 }); } else if (tipo === 'tipo2') { Object.assign(this, { imagem: assets.inimigo2, largura: 80, altura: 80, expConcedida: 70, scoreValue: 250, cooldownTiroBase: 2200 }); this.vidaMax *= 2.5; this.danoTiro *= 1.5; } else if (tipo === 'miniboss') { Object.assign(this, { imagem: assets.boss, largura: 110, altura: 110, expConcedida: 150, scoreValue: 500, cooldownTiroBase: 2000 }); this.vidaMax *= 4; this.danoTiro *= 2; } else if (tipo === 'boss') { Object.assign(this, { imagem: assets.boss, largura: 150, altura: 150, expConcedida: 500, scoreValue: 2000, cooldownTiroBase: 2000, estadoAtaque: 'movendo', timerAtaque: Date.now(), tocouFalaEntrada: false, tocouFala75: false, tocouFala50: false, tocouFala25: false }); this.vidaMax = (500 + ondaAtual * 50) * 1.5; this.danoTiro = 15; } this.vida = this.vidaMax; this.proximoIntervaloTiro = this.cooldownTiroBase + Math.random() * 1500; this.patrulhaCenterY = this.alvoY; } draw() { drawImageWithFallback(this.imagem, this.posicao.x, this.posicao.y, this.largura, this.altura, this.tipo === 'tipo1' ? '#e63946' : '#fca311'); const pVida = this.vida / this.vidaMax; if (this.tipo !== 'boss') { ctx.fillStyle = '#dc2f02'; ctx.fillRect(this.posicao.x, this.posicao.y - 10, this.largura, 5); ctx.fillStyle = '#9ef01a'; ctx.fillRect(this.posicao.x, this.posicao.y - 10, this.largura * pVida, 5); } else { ctx.fillStyle = '#333'; ctx.fillRect(canvas.width/4, 20, canvas.width/2, 20); ctx.fillStyle = '#d00000'; ctx.fillRect(canvas.width/4, 20, (canvas.width/2) * pVida, 20); ctx.strokeStyle = '#fff'; ctx.strokeRect(canvas.width/4, 20, canvas.width/2, 20); } } _playVoiceLine(audioName) { const bossAudios = ['siteclonado', '75', '50', '25']; bossAudios.forEach(name => { if (assets[name]) { assets[name].pause(); assets[name].currentTime = 0; } }); if (assets[audioName]) { const volumeFinal = Math.min(1, volumeMusicaSlider * MAX_VOLUME_MUSICA + BOSS_VOICE_BOOST); assets[audioName].volume = volumeFinal; assets[audioName].play(); } } update(player) { if (this.tipo === 'boss') { this.updateBoss(player); return; } if (this.posicao.y < this.alvoY) { this.posicao.y += this.velocidadeY * this.slowModifier; } if (!this.podeMoverHorizontalmente && Date.now() - this.spawnTimestamp > 4000) { this.podeMoverHorizontalmente = true; this.patrulhaCenterY = this.posicao.y; } if (this.podeMoverHorizontalmente) { this.posicao.x += this.velocidadeX * this.slowModifier; if (this.posicao.x <= 0 || this.posicao.x + this.largura >= canvas.width) { this.velocidadeX *= -1; } this.posicao.y = this.patrulhaCenterY + Math.sin(Date.now() * this.patrulhaSpeed) * this.patrulhaRange; const agora = Date.now(); if (agora - this.ultimoTiro > this.proximoIntervaloTiro) { this.ultimoTiro = agora; this.proximoIntervaloTiro = this.cooldownTiroBase + Math.random() * 1500; const centro = { x: this.posicao.x + this.largura / 2, y: this.posicao.y + this.altura / 2 }; const angulo = Math.atan2(player.posicao.y + player.altura / 2 - centro.y, player.posicao.x + player.largura / 2 - centro.x); const vel = { x: Math.cos(angulo) * 4, y: Math.sin(angulo) * 4 }; projeteisInimigos.push(new InimigoProjétil(centro.x, centro.y, 6, '#ff4d6d', vel, this.danoTiro)); } } } updateBoss(player) { if (this.posicao.y < 100) { this.posicao.y += this.velocidadeY; } else { this.posicao.x += Math.sin(Date.now() / 2000) * 1.5; } const percentualVida = this.vida / this.vidaMax; if (!this.tocouFalaEntrada) { this._playVoiceLine('siteclonado'); this.tocouFalaEntrada = true; } else if (percentualVida < 0.75 && !this.tocouFala75) { this._playVoiceLine('75'); this.tocouFala75 = true; } else if (percentualVida < 0.50 && !this.tocouFala50) { this._playVoiceLine('50'); this.tocouFala50 = true; } else if (percentualVida < 0.25 && !this.tocouFala25) { this._playVoiceLine('25'); this.tocouFala25 = true; } const agora = Date.now(); if (agora - this.timerAtaque > this.cooldownTiroBase) { this.timerAtaque = agora; this.estadoAtaque = Math.random() < 0.6 ? 'normal' : 'barragem'; const centro = { x: this.posicao.x + this.largura / 2, y: this.posicao.y + this.altura / 2 }; if (this.estadoAtaque === 'normal') { const angulo = Math.atan2(player.posicao.y + player.altura / 2 - centro.y, player.posicao.x + player.largura / 2 - centro.x); const vel = { x: Math.cos(angulo) * 6, y: Math.sin(angulo) * 6 }; projeteisInimigos.push(new InimigoProjétil(centro.x, centro.y, 10, '#ff6a00', vel, this.danoTiro)); } else { for (let i = -3; i <= 3; i++) { const angulo = Math.atan2(player.posicao.y - centro.y, player.posicao.x - centro.x) + (i * 0.2); const vel = { x: Math.cos(angulo) * 5, y: Math.sin(angulo) * 5 }; projeteisInimigos.push(new InimigoProjétil(centro.x, centro.y, 7, '#ff8c00', vel, this.danoTiro)); } } } } sofrerDano(dano) { this.vida -= dano; } }
 class Projétil { constructor(x, y, dano, isCrit, angulo) { this.posicao = { x, y }; this.dano = dano; this.isCrit = isCrit; this.pierceLeft = player.pierceCount; this.largura = 30 * player.projectileSizeMultiplier; this.altura = 30 * player.projectileSizeMultiplier; const anguloTiro = angulo !== undefined ? angulo : Math.atan2(mouse.y - this.posicao.y, mouse.x - this.posicao.x); this.velocidade = { x: Math.cos(anguloTiro) * 5.4, y: Math.sin(anguloTiro) * 5.4 }; } draw() { drawImageWithFallback(assets.dinheiro, this.posicao.x - this.largura / 2, this.posicao.y - this.altura / 2, this.largura, this.altura, this.isCrit ? '#ffcc00' : '#f1c40f'); } update() { this.posicao.x += this.velocidade.x; this.posicao.y += this.velocidade.y; } }
 class InimigoProjétil { constructor(x, y, raio, cor, vel, dano) { this.posicao = {x, y}; this.raio = raio; this.cor = cor; this.velocidade = vel; this.dano = dano; this.largura = raio * 2; this.altura = raio * 2; } draw() { ctx.beginPath(); ctx.arc(this.posicao.x, this.posicao.y, this.raio, 0, 2 * Math.PI); ctx.fillStyle = this.cor; ctx.fill(); } update() { this.posicao.x += this.velocidade.x; this.posicao.y += this.velocidade.y; } }

@@ -20,7 +20,6 @@ let draggingSlider = null;
 let volumeMusicaSlider = 1.0;
 let volumeEfeitosSlider = 1.0;
 
-// --- Funções de Inicialização e Lógica ---
 function inicializarJogo() {
     pararTodosOsSons(false);
     plataformas = [new Plataforma(0, canvas.height - 40, canvas.width, 40)];
@@ -154,9 +153,13 @@ function drawPowersMenu() {
 }
 
 function drawTotalEnemyHealthBar() { if (!inimigos || inimigos.length === 0 || estadoDoJogo !== 'rodando') return; let totalVida = 0; let totalVidaMax = 0; inimigos.forEach(inimigo => { if (inimigo.tipo !== 'boss') { totalVida += inimigo.vida; totalVidaMax += inimigo.vidaMax; } }); if (totalVidaMax > 0) { const barWidth = 400; const barX = canvas.width / 2 - barWidth / 2; const percent = totalVida / totalVidaMax; ctx.fillStyle = '#111'; ctx.fillRect(barX, 10, barWidth, 15); ctx.fillStyle = 'red'; ctx.fillRect(barX, 10, barWidth * percent, 15); ctx.strokeStyle = '#555'; ctx.strokeRect(barX, 10, barWidth, 15); } }
+
 function drawGameUI() { const p = player; ctx.fillStyle = '#333'; ctx.fillRect(20, 20, 250, 25); ctx.fillStyle = '#ff4757'; ctx.fillRect(20, 20, (p.vida / p.vidaMax) * 250, 25); ctx.fillStyle = '#333'; ctx.fillRect(20, 55, 250, 20); ctx.fillStyle = '#f1c40f'; ctx.fillRect(20, 55, (p.exp / p.expParaProximoNivel) * 250, 20); ctx.strokeStyle = '#fff'; ctx.strokeRect(20, 20, 250, 25); ctx.strokeRect(20, 55, 250, 20); ctx.fillStyle = '#fff'; ctx.font = '16px Arial'; ctx.fillText(`HP: ${Math.ceil(p.vida)} / ${p.vidaMax}`, 30, 38); ctx.font = '14px Arial'; ctx.fillText(`EXP: ${p.exp} / ${p.expParaProximoNivel}`, 30, 70); ctx.font = '24px Arial'; ctx.fillText(`Nível: ${p.nivel}`, 290, 45); ctx.textAlign = 'right'; ctx.font = '24px Arial'; ctx.fillStyle = '#fff'; ctx.fillText('Especial [F]', canvas.width - 20, 40); ctx.font = '22px Arial'; ctx.fillStyle = '#f1c40f'; ctx.fillText(`Pontos: ${score}`, canvas.width - 20, 70); for (let i = 0; i < p.specialCharges; i++) drawImageWithFallback(assets.kenner, canvas.width - 60 - (i * 45), 85, 25, 40, 'magenta'); if (p.specialCharges < p.maxSpecialCharges) { ctx.fillStyle = '#555'; ctx.fillRect(canvas.width - 20 - 150, 135, 150, 10); ctx.fillStyle = '#00ffff'; ctx.fillRect(canvas.width - 20 - 150, 135, (p.specialChargeProgress / KILLS_PER_CHARGE) * 150, 10); } ctx.textAlign = 'center'; ctx.font = '32px "Courier New", monospace'; if (estadoDoJogo === 'rodando') { let eBoss = inimigos.find(i => i.tipo === 'boss'); if (eBoss) { ctx.fillStyle = '#d00000'; ctx.fillText(`!!! ONDA DO CHEFE !!!`, canvas.width / 2, 80); } else { ctx.fillStyle = '#e63946'; ctx.fillText(`ONDA ${ondaAtual}`, canvas.width / 2, 50); } } else if (estadoDoJogo === 'entreOndas') { const tempo = Math.ceil((timerProximaOnda - Date.now()) / 1000); ctx.fillStyle = '#00ffff'; ctx.fillText(ondaAtual === 0 ? `O jogo começa em: ${tempo}s` : `Próxima onda em: ${tempo}s`, canvas.width / 2, 50); } if (textoEspecial.timer > 0) { ctx.font = '50px "Courier New", monospace'; ctx.fillStyle = `rgba(255, 255, 0, ${textoEspecial.alpha})`; ctx.fillText(textoEspecial.texto, canvas.width / 2, canvas.height / 2); } }
+
 function drawLevelUpScreen() { ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#fff'; ctx.font = '60px "Courier New", monospace'; ctx.textAlign = 'center'; ctx.fillText('LEVEL UP!', canvas.width / 2, 150); ctx.font = '30px "Courier New", monospace'; ctx.fillText('Escolha um upgrade:', canvas.width / 2, 220); opcoesDeUpgrade.forEach((up, i) => { up.box = { x: canvas.width / 2 - 250, y: 280 + i * 120, width: 500, height: 100 }; ctx.fillStyle = '#222'; ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 3; ctx.fillRect(up.box.x, up.box.y, up.box.width, up.box.height); ctx.strokeRect(up.box.x, up.box.y, up.box.width, up.box.height); ctx.fillStyle = '#00ffff'; ctx.font = '28px "Courier New", monospace'; ctx.fillText(up.nome, canvas.width / 2, up.box.y + 45); ctx.fillStyle = '#fff'; ctx.font = '20px "Courier New", monospace'; ctx.fillText(up.descricao, canvas.width / 2, up.box.y + 75); }); }
+
 function drawGameOverScreen() { ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#e63946'; ctx.font = '80px "Courier New", monospace'; ctx.textAlign = 'center'; ctx.fillText('FIM DE JOGO', canvas.width / 2, canvas.height / 2 - 50); ctx.fillStyle = '#fff'; ctx.font = '30px "Courier New", monospace'; ctx.fillText(`Você sobreviveu até a Onda ${ondaAtual}`, canvas.width / 2, canvas.height / 2 + 20); ctx.fillText(`Pontuação Final: ${score}`, canvas.width / 2, canvas.height / 2 + 60); ctx.fillText('Clique para voltar ao menu', canvas.width / 2, canvas.height / 2 + 100); }
+
 function drawPauseMenu() { ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = '80px "Courier New", monospace'; ctx.fillText("PAUSADO", canvas.width / 2, 250); menuButtons.continuar = { x: canvas.width/2 - 200, y: 350, width: 400, height: 70 }; menuButtons.opcoesPausa = { x: canvas.width/2 - 200, y: 450, width: 400, height: 70 }; menuButtons.sair = { x: canvas.width/2 - 200, y: 550, width: 400, height: 70 }; ctx.fillStyle = '#222'; ctx.fillRect(menuButtons.continuar.x, menuButtons.continuar.y, menuButtons.continuar.width, menuButtons.continuar.height); ctx.fillRect(menuButtons.opcoesPausa.x, menuButtons.opcoesPausa.y, menuButtons.opcoesPausa.width, menuButtons.opcoesPausa.height); ctx.fillRect(menuButtons.sair.x, menuButtons.sair.y, menuButtons.sair.width, menuButtons.sair.height); ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 3; ctx.strokeRect(menuButtons.continuar.x, menuButtons.continuar.y, menuButtons.continuar.width, menuButtons.continuar.height); ctx.strokeRect(menuButtons.opcoesPausa.x, menuButtons.opcoesPausa.y, menuButtons.opcoesPausa.width, menuButtons.opcoesPausa.height); ctx.strokeStyle = '#e63946'; ctx.strokeRect(menuButtons.sair.x, menuButtons.sair.y, menuButtons.sair.width, menuButtons.sair.height); ctx.fillStyle = '#fff'; ctx.font = '30px "Courier New", monospace'; ctx.fillText("Continuar", canvas.width / 2, 395); ctx.fillText("Opções de Volume", canvas.width / 2, 495); ctx.fillText("Voltar ao Menu", canvas.width / 2, 595); }
 
 function drawGameWorld() {
@@ -178,7 +181,7 @@ function draw() {
         case 'menuPrincipal': drawMainMenu(); break;
         case 'menuPoderes': drawPowersMenu(); break;
         case 'menuVolume': drawVolumeMenu(); break;
-        case 'intro': /* Não desenha nada, o vídeo está por cima */ break;
+        case 'intro': break;
         case 'rodando': case 'entreOndas': case 'pausado':
             if (player) {
                 drawGameWorld();
@@ -188,10 +191,7 @@ function draw() {
             }
             break;
         case 'levelUp':
-            if (player) {
-                drawGameWorld();
-                drawGameUI();
-            }
+            if (player) { drawGameWorld(); drawGameUI(); }
             drawLevelUpScreen();
             break;
         case 'gameOver': drawGameOverScreen(); break;
@@ -200,19 +200,12 @@ function draw() {
 }
 
 function gameLoop() {
-    // Tenta iniciar a música tema uma vez
-    if (estadoDoJogo !== 'carregando' && !themeMusicStarted) {
+    if (!themeMusicStarted && estadoDoJogo !== 'carregando' && estadoDoJogo !== 'intro') {
         if (assets.theme) {
             assets.theme.loop = true;
             assets.theme.volume = volumeMusicaSlider * MAX_VOLUME_MUSICA;
             const promise = assets.theme.play();
-            if (promise !== undefined) {
-                promise.then(() => {
-                    themeMusicStarted = true;
-                }).catch(() => {
-                    // Autoplay bloqueado, o clique do usuário irá iniciar.
-                });
-            }
+            if (promise !== undefined) { promise.then(() => { themeMusicStarted = true; }).catch(() => {}); }
         }
     }
     update();
