@@ -3,15 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <title>O Iludido</title>
+    <!-- Link para o arquivo de estilo -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <canvas id="gameCanvas"></canvas>
+    <!-- NOVO: Elemento de vídeo para a introdução -->
+    <video id="introVideo" src="intro.mp4" muted="muted" preload="auto"></video>
 
     <!-- Scripts carregados em ordem. 'defer' garante a execução na ordem correta -->
     <script src="js/constants.js" defer></script>
     <script src="js/utils.js" defer></script>
-    <script src="js/assets.js" defer></script> <!-- NOVO ARQUIVO CARREGADO AQUI -->
+    <script src="js/assets.js" defer></script>
     <script src="js/classes.js" defer></script>
     <script src="js/main.js" defer></script>
 </body>
