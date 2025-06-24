@@ -12,7 +12,7 @@ let opcoesDeUpgrade = [], player;
 let ondaAtual = 0, timerProximaOnda = 0;
 let textoEspecial = { texto: "", alpha: 0, duration: 2500, timer: 0 };
 let menuButtons = {};
-let bossFoiDerrotado = false; // <<< NOVO: Flag para controlar aparição do miniboss
+let bossFoiDerrotado = false;
 
 // --- Funções de Inicialização ---
 function inicializarJogo() {
@@ -20,7 +20,7 @@ function inicializarJogo() {
     player = new Player();
     inimigos = []; projeteis = []; projeteisInimigos = []; efeitosVisuais = [];
     ondaAtual = 0;
-    bossFoiDerrotado = false; // <<< NOVO: Reseta a flag ao iniciar novo jogo
+    bossFoiDerrotado = false;
     estadoDoJogo = 'entreOndas';
     timerProximaOnda = Date.now() + TEMPO_ENTRE_ONDAS;
 }
@@ -29,39 +29,40 @@ function iniciarProximaOnda() {
     ondaAtual++;
     estadoDoJogo = 'rodando';
     let defOnda = DEFINICOES_ONDAS[ondaAtual - 1];
-    if (!defOnda) { // Ondas procedurais após a 5
+    if (!defOnda) {
         defOnda = {
             tipo1: Math.min(10, 5 + Math.floor((ondaAtual - 5) / 2)),
             tipo2: Math.min(6, 2 + Math.floor((ondaAtual - 5) / 3)),
-            miniboss: bossFoiDerrotado ? 1 : 0 // <<< NOVO: Adiciona um miniboss se o chefe já foi derrotado
+            miniboss: bossFoiDerrotado ? 1 : 0
         };
     }
-
-    if (defOnda.boss) {
-        inimigos.push(new Inimigo(canvas.width / 2 - 75, -160, 'boss'));
-    }
-    if (defOnda.miniboss) { // <<< NOVO: Spawna o miniboss
-        inimigos.push(new Inimigo(Math.random() * (canvas.width - 110), -120 - Math.random() * 200, 'miniboss'));
-    }
-    for (let i = 0; i < (defOnda.tipo1 || 0); i++) {
-        inimigos.push(new Inimigo(Math.random() * (canvas.width - 40), -60 - Math.random() * 200, 'tipo1'));
-    }
-    for (let i = 0; i < (defOnda.tipo2 || 0); i++) {
-        inimigos.push(new Inimigo(Math.random() * (canvas.width - 80), -80 - Math.random() * 300, 'tipo2'));
-    }
+    if (defOnda.boss) { inimigos.push(new Inimigo(canvas.width / 2 - 75, -160, 'boss')); }
+    if (defOnda.miniboss) { inimigos.push(new Inimigo(Math.random() * (canvas.width - 110), -120 - Math.random() * 200, 'miniboss')); }
+    for (let i = 0; i < (defOnda.tipo1 || 0); i++) { inimigos.push(new Inimigo(Math.random() * (canvas.width - 40), -60 - Math.random() * 200, 'tipo1')); }
+    for (let i = 0; i < (defOnda.tipo2 || 0); i++) { inimigos.push(new Inimigo(Math.random() * (canvas.width - 80), -80 - Math.random() * 300, 'tipo2')); }
 }
 
 // --- Lógica de Atualização (Update) ---
 function checarColisoes() {
     for (let i = projeteis.length - 1; i >= 0; i--) {
         const p = projeteis[i];
+        if (!p) continue;
         for (let j = inimigos.length - 1; j >= 0; j--) {
             const inimigo = inimigos[j];
             if (isColliding(p, inimigo)) {
                 inimigo.sofrerDano(p.dano);
                 projeteis.splice(i, 1);
                 if (inimigo.vida <= 0) {
-                    player.inimigoDerrotado(inimigo.expConcedida, inimigo.tipo); // <<< NOVO: Passa o tipo do inimigo
+                    if (inimigo.tipo === 'boss') { // <<< NOVO: Para a música do chefe ao ser derrotado
+                        const bossAudios = ['siteclonado', '75', '50', '25'];
+                        bossAudios.forEach(name => {
+                            if (assets[name]) {
+                                assets[name].pause();
+                                assets[name].currentTime = 0;
+                            }
+                        });
+                    }
+                    player.inimigoDerrotado(inimigo.expConcedida, inimigo.tipo);
                     inimigos.splice(j, 1);
                 }
                 break;
@@ -78,7 +79,7 @@ function checarColisoes() {
     }
 }
 
-// (O resto do arquivo main.js pode ser mantido igual ao da versão anterior)
+// (O resto do arquivo main.js continua inalterado)
 function update() { if (['gameOver', 'levelUp', 'carregando', 'menuPrincipal', 'menuPoderes'].includes(estadoDoJogo)) return; if (textoEspecial.timer > 0) { textoEspecial.timer -= 16.67; textoEspecial.alpha = textoEspecial.timer / textoEspecial.duration; } if (estadoDoJogo === 'entreOndas') { if (Date.now() >= timerProximaOnda) iniciarProximaOnda(); player.update(); } if (estadoDoJogo === 'rodando') { player.update(); if (mouse.pressionado) player.atirar(); inimigos.forEach(i => i.update(player)); checarColisoes(); if (estadoDoJogo === 'levelUp') return; if (inimigos.length === 0) { estadoDoJogo = 'entreOndas'; timerProximaOnda = Date.now() + TEMPO_ENTRE_ONDAS; } } [...projeteis, ...projeteisInimigos, ...efeitosVisuais].forEach(obj => obj.update()); const naTela = p => p.posicao.x > -p.largura && p.posicao.x < canvas.width + p.largura && p.posicao.y > -p.altura && p.posicao.y < canvas.height + p.altura; projeteis = projeteis.filter(naTela); projeteisInimigos = projeteisInimigos.filter(naTela); efeitosVisuais = efeitosVisuais.filter(e => !e.remover); }
 function drawMainMenu() { ctx.fillStyle = '#0f0f1e'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = '100px "Courier New", monospace'; ctx.fillText("O Iludido", canvas.width / 2, 250); menuButtons.iniciar = { x: canvas.width/2 - 150, y: 400, width: 300, height: 70 }; menuButtons.poderes = { x: canvas.width/2 - 150, y: 500, width: 300, height: 70 }; ctx.fillStyle = '#222'; ctx.fillRect(menuButtons.iniciar.x, menuButtons.iniciar.y, menuButtons.iniciar.width, menuButtons.iniciar.height); ctx.fillRect(menuButtons.poderes.x, menuButtons.poderes.y, menuButtons.poderes.width, menuButtons.poderes.height); ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 3; ctx.strokeRect(menuButtons.iniciar.x, menuButtons.iniciar.y, menuButtons.iniciar.width, menuButtons.iniciar.height); ctx.strokeRect(menuButtons.poderes.x, menuButtons.poderes.y, menuButtons.poderes.width, menuButtons.poderes.height); ctx.fillStyle = '#fff'; ctx.font = '30px "Courier New", monospace'; ctx.fillText("Iniciar Jogo", canvas.width / 2, 445); ctx.fillText("Poderes", canvas.width / 2, 545); }
 function drawPowersMenu() { ctx.fillStyle = '#0f0f1e'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = '60px "Courier New", monospace'; ctx.fillText("Lista de Poderes", canvas.width / 2, 100); todosOsUpgrades.forEach((up, i) => { const yPos = 200 + i * 60; ctx.font = '28px "Courier New", monospace'; ctx.fillStyle = '#00ffff'; ctx.fillText(up.nome, canvas.width/2, yPos); ctx.font = '20px "Courier New", monospace'; ctx.fillStyle = '#fff'; ctx.fillText(up.descricao, canvas.width/2, yPos + 25); }); menuButtons.voltar = { x: canvas.width/2 - 150, y: canvas.height - 150, width: 300, height: 70 }; ctx.fillStyle = '#222'; ctx.fillRect(menuButtons.voltar.x, menuButtons.voltar.y, menuButtons.voltar.width, menuButtons.voltar.height); ctx.strokeStyle = '#e63946'; ctx.strokeRect(menuButtons.voltar.x, menuButtons.voltar.y, menuButtons.voltar.width, menuButtons.voltar.height); ctx.fillStyle = '#fff'; ctx.font = '30px "Courier New", monospace'; ctx.fillText("Voltar", canvas.width / 2, canvas.height - 105); }
