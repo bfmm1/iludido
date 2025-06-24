@@ -32,7 +32,6 @@ const virtualControls = {
 
 // --- Funções de Inicialização e Lógica ---
 function inicializarJogo() {
-    // pararTodosOsSons(); // <<< Removido para a música continuar
     plataformas = [new Plataforma(0, canvas.height - 40, canvas.width, 40)];
     player = new Player();
     inimigos = []; projeteis = []; projeteisInimigos = []; efeitosVisuais = []; moedas = []; efeitosDeDano = [];
@@ -40,6 +39,26 @@ function inicializarJogo() {
     bossFoiDerrotado = false;
     estadoDoJogo = 'entreOndas';
     timerProximaOnda = Date.now() + TEMPO_ENTRE_ONDAS;
+}
+
+function playIntroAndStartGame() {
+    const introVideo = document.getElementById('introVideo');
+    canvas.style.display = 'none';
+    introVideo.style.display = 'block';
+    introVideo.currentTime = 0;
+    introVideo.play().catch(e => {
+        console.error("Erro ao tocar o vídeo de introdução:", e);
+        startGameAfterIntro();
+    });
+    
+    introVideo.onended = startGameAfterIntro;
+}
+
+function startGameAfterIntro() {
+    const introVideo = document.getElementById('introVideo');
+    introVideo.style.display = 'none';
+    canvas.style.display = 'block';
+    inicializarJogo();
 }
 
 function iniciarProximaOnda() {
@@ -60,17 +79,7 @@ function checarColisoes() {
     for (let i = projeteis.length - 1; i >= 0; i--) { const p = projeteis[i]; if (!p) continue; for (let j = inimigos.length - 1; j >= 0; j--) { const inimigo = inimigos[j]; if (isColliding(p, inimigo)) { inimigo.sofrerDano(p.dano); efeitosDeDano.push(new DamageNumber(inimigo.posicao.x + inimigo.largura / 2, inimigo.posicao.y, p.dano)); projeteis.splice(i, 1); break; } } }
     const playerHitbox = { posicao: { x: player.posicao.x + (player.largura * 0.15), y: player.posicao.y + (player.altura * 0.15) }, largura: player.largura * 0.7, altura: player.altura * 0.7 };
     for (let i = projeteisInimigos.length - 1; i >= 0; i--) { const p = projeteisInimigos[i]; if (isColliding(p, playerHitbox)) { player.sofrerDano(p.dano); projeteisInimigos.splice(i, 1); break; } }
-    
-    for (let i = inimigos.length - 1; i >= 0; i--) {
-        const inimigo = inimigos[i];
-        if (inimigo.vida <= 0) {
-            if (inimigo.tipo === 'boss') { const bossAudios = ['siteclonado', '75', '50', '25']; bossAudios.forEach(name => { if (assets[name]) { assets[name].pause(); assets[name].currentTime = 0; } }); }
-            player.inimigoDerrotado(inimigo.expConcedida, inimigo.tipo);
-            score += inimigo.scoreValue;
-            moedas.push(new Coin(inimigo.posicao.x + inimigo.largura / 2, inimigo.posicao.y));
-            inimigos.splice(i, 1);
-        }
-    }
+    for (let i = inimigos.length - 1; i >= 0; i--) { const inimigo = inimigos[i]; if (inimigo.vida <= 0) { if (inimigo.tipo === 'boss') { const bossAudios = ['siteclonado', '75', '50', '25']; bossAudios.forEach(name => { if (assets[name]) { assets[name].pause(); assets[name].currentTime = 0; } }); } player.inimigoDerrotado(inimigo.expConcedida, inimigo.tipo); score += inimigo.scoreValue; moedas.push(new Coin(inimigo.posicao.x + inimigo.largura / 2, inimigo.posicao.y)); inimigos.splice(i, 1); } }
     for (let i = moedas.length - 1; i >= 0; i--) { if (isColliding(player, moedas[i])) { moedas.splice(i, 1); } }
 }
 
@@ -88,24 +97,32 @@ function update() {
 
 // --- Funções de Desenho ---
 function drawMainMenu() {
-    ctx.fillStyle = '#0f0f1e'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = '100px "Courier New", monospace';
-    ctx.fillText("O Iludido", canvas.width / 2, 250);
-    menuButtons.iniciar = { x: canvas.width/2 - 150, y: 350, width: 300, height: 70 };
-    menuButtons.poderes = { x: canvas.width/2 - 150, y: 450, width: 300, height: 70 };
-    menuButtons.volume = { x: canvas.width/2 - 150, y: 550, width: 300, height: 70 };
+    drawImageWithFallback(assets.fundo, 0, 0, canvas.width, canvas.height, '#0f0f1e');
+    ctx.textAlign = 'center';
+
+    // <<< MUDANÇA: Coordenadas dos botões ajustadas
+    const buttonX = canvas.width - 400;
+    const buttonYStart = 400;
+    const buttonYSpacing = 100;
+    
+    menuButtons.iniciar = { x: buttonX, y: buttonYStart, width: 300, height: 70 };
+    menuButtons.poderes = { x: buttonX, y: buttonYStart + buttonYSpacing, width: 300, height: 70 };
+    menuButtons.volume = { x: buttonX, y: buttonYStart + buttonYSpacing * 2, width: 300, height: 70 };
+
     ctx.fillStyle = '#222';
     ctx.fillRect(menuButtons.iniciar.x, menuButtons.iniciar.y, menuButtons.iniciar.width, menuButtons.iniciar.height);
     ctx.fillRect(menuButtons.poderes.x, menuButtons.poderes.y, menuButtons.poderes.width, menuButtons.poderes.height);
     ctx.fillRect(menuButtons.volume.x, menuButtons.volume.y, menuButtons.volume.width, menuButtons.volume.height);
+    
     ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 3;
     ctx.strokeRect(menuButtons.iniciar.x, menuButtons.iniciar.y, menuButtons.iniciar.width, menuButtons.iniciar.height);
     ctx.strokeRect(menuButtons.poderes.x, menuButtons.poderes.y, menuButtons.poderes.width, menuButtons.poderes.height);
     ctx.strokeRect(menuButtons.volume.x, menuButtons.volume.y, menuButtons.volume.width, menuButtons.volume.height);
+
     ctx.fillStyle = '#fff'; ctx.font = '30px "Courier New", monospace';
-    ctx.fillText("Iniciar Jogo", canvas.width / 2, 395);
-    ctx.fillText("Poderes", canvas.width / 2, 495);
-    ctx.fillText("Volume", canvas.width / 2, 595);
+    ctx.fillText("Iniciar Jogo", buttonX + 150, buttonYStart + 45);
+    ctx.fillText("Poderes", buttonX + 150, buttonYStart + buttonYSpacing + 45);
+    ctx.fillText("Volume", buttonX + 150, buttonYStart + buttonYSpacing * 2 + 45);
 }
 
 function drawVolumeMenu() {
@@ -137,48 +154,11 @@ function drawGameUI() { const p = player; ctx.fillStyle = '#333'; ctx.fillRect(2
 
 function drawLevelUpScreen() { ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#fff'; ctx.font = '60px "Courier New", monospace'; ctx.textAlign = 'center'; ctx.fillText('LEVEL UP!', canvas.width / 2, 150); ctx.font = '30px "Courier New", monospace'; ctx.fillText('Escolha um upgrade:', canvas.width / 2, 220); opcoesDeUpgrade.forEach((up, i) => { up.box = { x: canvas.width / 2 - 250, y: 280 + i * 120, width: 500, height: 100 }; ctx.fillStyle = '#222'; ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 3; ctx.fillRect(up.box.x, up.box.y, up.box.width, up.box.height); ctx.strokeRect(up.box.x, up.box.y, up.box.width, up.box.height); ctx.fillStyle = '#00ffff'; ctx.font = '28px "Courier New", monospace'; ctx.fillText(up.nome, canvas.width / 2, up.box.y + 45); ctx.fillStyle = '#fff'; ctx.font = '20px "Courier New", monospace'; ctx.fillText(up.descricao, canvas.width / 2, up.box.y + 75); }); }
 
-function drawGameOverScreen() { ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#e63946'; ctx.font = '80px "Courier New", monospace'; ctx.textAlign = 'center'; ctx.fillText('FIM DE JOGO', canvas.width / 2, canvas.height / 2 - 50); ctx.fillStyle = '#fff'; ctx.font = '30px "Courier New", monospace'; ctx.fillText(`Você sobreviveu até a Onda ${ondaAtual}`, canvas.width / 2, canvas.height / 2 + 20); ctx.fillText('Clique para voltar ao menu', canvas.width / 2, canvas.height / 2 + 80); }
+function drawGameOverScreen() { ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#e63946'; ctx.font = '80px "Courier New", monospace'; ctx.textAlign = 'center'; ctx.fillText('FIM DE JOGO', canvas.width / 2, canvas.height / 2 - 50); ctx.fillStyle = '#fff'; ctx.font = '30px "Courier New", monospace'; ctx.fillText(`Você sobreviveu até a Onda ${ondaAtual}`, canvas.width / 2, canvas.height / 2 + 20); ctx.fillText(`Pontuação Final: ${score}`, canvas.width / 2, canvas.height / 2 + 60); ctx.fillText('Clique para voltar ao menu', canvas.width / 2, canvas.height / 2 + 100); }
 
-function drawVirtualControls() {
-    ctx.globalAlpha = 0.5; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = '30px Arial';
-    ctx.beginPath(); ctx.arc(virtualControls.left.x, virtualControls.left.y, virtualControls.left.radius, 0, 2 * Math.PI); ctx.fill();
-    ctx.beginPath(); ctx.arc(virtualControls.right.x, virtualControls.right.y, virtualControls.right.radius, 0, 2 * Math.PI); ctx.fill();
-    ctx.beginPath(); ctx.arc(virtualControls.jump.x, virtualControls.jump.y, virtualControls.jump.radius, 0, 2 * Math.PI); ctx.fill();
-    ctx.beginPath(); ctx.arc(virtualControls.shoot.x, virtualControls.shoot.y, virtualControls.shoot.radius, 0, 2 * Math.PI); ctx.fill();
-    ctx.beginPath(); ctx.arc(virtualControls.special.x, virtualControls.special.y, virtualControls.special.radius, 0, 2 * Math.PI); ctx.fill();
-    ctx.beginPath(); ctx.arc(virtualControls.pause.x, virtualControls.pause.y, virtualControls.pause.radius, 0, 2 * Math.PI); ctx.fill();
-    ctx.fillStyle = '#000';
-    ctx.fillText('<', virtualControls.left.x, virtualControls.left.y + 10);
-    ctx.fillText('>', virtualControls.right.x, virtualControls.right.y + 10);
-    ctx.fillText('↑', virtualControls.jump.x, virtualControls.jump.y + 10);
-    ctx.fillText('ATIRAR', virtualControls.shoot.x, virtualControls.shoot.y + 10);
-    ctx.font = '24px Arial'; ctx.fillText('F', virtualControls.special.x, virtualControls.special.y + 8);
-    ctx.fillRect(virtualControls.pause.x - 10, virtualControls.pause.y - 12, 8, 24);
-    ctx.fillRect(virtualControls.pause.x + 2, virtualControls.pause.y - 12, 8, 24);
-    ctx.globalAlpha = 1.0;
-}
+function drawVirtualControls() { ctx.globalAlpha = 0.5; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = '30px Arial'; ctx.beginPath(); ctx.arc(virtualControls.left.x, virtualControls.left.y, virtualControls.left.radius, 0, 2 * Math.PI); ctx.fill(); ctx.beginPath(); ctx.arc(virtualControls.right.x, virtualControls.right.y, virtualControls.right.radius, 0, 2 * Math.PI); ctx.fill(); ctx.beginPath(); ctx.arc(virtualControls.jump.x, virtualControls.jump.y, virtualControls.jump.radius, 0, 2 * Math.PI); ctx.fill(); ctx.beginPath(); ctx.arc(virtualControls.shoot.x, virtualControls.shoot.y, virtualControls.shoot.radius, 0, 2 * Math.PI); ctx.fill(); ctx.beginPath(); ctx.arc(virtualControls.special.x, virtualControls.special.y, virtualControls.special.radius, 0, 2 * Math.PI); ctx.fill(); ctx.beginPath(); ctx.arc(virtualControls.pause.x, virtualControls.pause.y, virtualControls.pause.radius, 0, 2 * Math.PI); ctx.fill(); ctx.fillStyle = '#000'; ctx.fillText('<', virtualControls.left.x, virtualControls.left.y + 10); ctx.fillText('>', virtualControls.right.x, virtualControls.right.y + 10); ctx.fillText('↑', virtualControls.jump.x, virtualControls.jump.y + 10); ctx.fillText('ATIRAR', virtualControls.shoot.x, virtualControls.shoot.y + 10); ctx.font = '24px Arial'; ctx.fillText('F', virtualControls.special.x, virtualControls.special.y + 8); ctx.fillRect(virtualControls.pause.x - 10, virtualControls.pause.y - 12, 8, 24); ctx.fillRect(virtualControls.pause.x + 2, virtualControls.pause.y - 12, 8, 24); ctx.globalAlpha = 1.0; }
 
-function drawPauseMenu() {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = '80px "Courier New", monospace';
-    ctx.fillText("PAUSADO", canvas.width / 2, 250);
-    menuButtons.continuar = { x: canvas.width/2 - 200, y: 350, width: 400, height: 70 };
-    menuButtons.opcoesPausa = { x: canvas.width/2 - 200, y: 450, width: 400, height: 70 };
-    menuButtons.sair = { x: canvas.width/2 - 200, y: 550, width: 400, height: 70 };
-    ctx.fillStyle = '#222';
-    ctx.fillRect(menuButtons.continuar.x, menuButtons.continuar.y, menuButtons.continuar.width, menuButtons.continuar.height);
-    ctx.fillRect(menuButtons.opcoesPausa.x, menuButtons.opcoesPausa.y, menuButtons.opcoesPausa.width, menuButtons.opcoesPausa.height);
-    ctx.fillRect(menuButtons.sair.x, menuButtons.sair.y, menuButtons.sair.width, menuButtons.sair.height);
-    ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 3;
-    ctx.strokeRect(menuButtons.continuar.x, menuButtons.continuar.y, menuButtons.continuar.width, menuButtons.continuar.height);
-    ctx.strokeRect(menuButtons.opcoesPausa.x, menuButtons.opcoesPausa.y, menuButtons.opcoesPausa.width, menuButtons.opcoesPausa.height);
-    ctx.strokeStyle = '#e63946';
-    ctx.strokeRect(menuButtons.sair.x, menuButtons.sair.y, menuButtons.sair.width, menuButtons.sair.height);
-    ctx.fillStyle = '#fff'; ctx.font = '30px "Courier New", monospace';
-    ctx.fillText("Continuar", canvas.width / 2, 395);
-    ctx.fillText("Opções de Volume", canvas.width / 2, 495);
-    ctx.fillText("Voltar ao Menu", canvas.width / 2, 595);
-}
+function drawPauseMenu() { ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = '80px "Courier New", monospace'; ctx.fillText("PAUSADO", canvas.width / 2, 250); menuButtons.continuar = { x: canvas.width/2 - 200, y: 350, width: 400, height: 70 }; menuButtons.opcoesPausa = { x: canvas.width/2 - 200, y: 450, width: 400, height: 70 }; menuButtons.sair = { x: canvas.width/2 - 200, y: 550, width: 400, height: 70 }; ctx.fillStyle = '#222'; ctx.fillRect(menuButtons.continuar.x, menuButtons.continuar.y, menuButtons.continuar.width, menuButtons.continuar.height); ctx.fillRect(menuButtons.opcoesPausa.x, menuButtons.opcoesPausa.y, menuButtons.opcoesPausa.width, menuButtons.opcoesPausa.height); ctx.fillRect(menuButtons.sair.x, menuButtons.sair.y, menuButtons.sair.width, menuButtons.sair.height); ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 3; ctx.strokeRect(menuButtons.continuar.x, menuButtons.continuar.y, menuButtons.continuar.width, menuButtons.continuar.height); ctx.strokeRect(menuButtons.opcoesPausa.x, menuButtons.opcoesPausa.y, menuButtons.opcoesPausa.width, menuButtons.opcoesPausa.height); ctx.strokeStyle = '#e63946'; ctx.strokeRect(menuButtons.sair.x, menuButtons.sair.y, menuButtons.sair.width, menuButtons.sair.height); ctx.fillStyle = '#fff'; ctx.font = '30px "Courier New", monospace'; ctx.fillText("Continuar", canvas.width / 2, 395); ctx.fillText("Opções de Volume", canvas.width / 2, 495); ctx.fillText("Voltar ao Menu", canvas.width / 2, 595); }
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -187,21 +167,21 @@ function draw() {
         case 'menuPrincipal': drawMainMenu(); break;
         case 'menuPoderes': drawPowersMenu(); break;
         case 'menuVolume': drawVolumeMenu(); break;
-        case 'pausado':
-            plataformas.forEach(p => p.draw()); moedas.forEach(c => c.draw()); projeteis.forEach(p => p.draw()); projeteisInimigos.forEach(p => p.draw());
-            player.draw(); inimigos.forEach(i => i.draw()); efeitosVisuais.forEach(e => e.draw()); efeitosDeDano.forEach(d => d.draw());
-            drawGameUI(); if (isMobile) drawVirtualControls();
-            drawPauseMenu();
-            break;
-        case 'rodando': case 'entreOndas':
-            plataformas.forEach(p => p.draw()); moedas.forEach(c => c.draw()); projeteis.forEach(p => p.draw()); projeteisInimigos.forEach(p => p.draw());
-            player.draw(); inimigos.forEach(i => i.draw()); efeitosVisuais.forEach(e => e.draw()); efeitosDeDano.forEach(d => d.draw());
-            drawGameUI(); drawTotalEnemyHealthBar(); if (isMobile) drawVirtualControls();
+        case 'rodando': case 'entreOndas': case 'pausado':
+            if (player) {
+                plataformas.forEach(p => p.draw()); moedas.forEach(c => c.draw()); projeteis.forEach(p => p.draw()); projeteisInimigos.forEach(p => p.draw());
+                player.draw(); inimigos.forEach(i => i.draw()); efeitosVisuais.forEach(e => e.draw()); efeitosDeDano.forEach(d => d.draw());
+                drawGameUI(); drawTotalEnemyHealthBar(); if (isMobile) drawVirtualControls();
+            }
+            if (estadoDoJogo === 'pausado') drawPauseMenu();
             break;
         case 'levelUp':
-            plataformas.forEach(p => p.draw()); moedas.forEach(c => c.draw()); projeteis.forEach(p => p.draw()); projeteisInimigos.forEach(p => p.draw());
-            player.draw(); inimigos.forEach(i => i.draw()); efeitosVisuais.forEach(e => e.draw()); efeitosDeDano.forEach(d => d.draw());
-            drawGameUI(); drawLevelUpScreen();
+            if (player) {
+                plataformas.forEach(p => p.draw()); moedas.forEach(c => c.draw()); projeteis.forEach(p => p.draw()); projeteisInimigos.forEach(p => p.draw());
+                player.draw(); inimigos.forEach(i => i.draw()); efeitosVisuais.forEach(e => e.draw()); efeitosDeDano.forEach(d => d.draw());
+                drawGameUI();
+            }
+            drawLevelUpScreen();
             break;
         case 'gameOver': drawGameOverScreen(); break;
     }
@@ -243,7 +223,7 @@ canvas.addEventListener('mousedown', () => {
     if (!themeMusicStarted && assets.theme) { assets.theme.play().catch(e => {}); themeMusicStarted = true; }
     switch(estadoDoJogo) {
         case 'menuPrincipal':
-            if (isPointInRect(mouse, menuButtons.iniciar)) inicializarJogo();
+            if (isPointInRect(mouse, menuButtons.iniciar)) playIntroAndStartGame();
             if (isPointInRect(mouse, menuButtons.poderes)) estadoDoJogo = 'menuPoderes';
             if (isPointInRect(mouse, menuButtons.volume)) { menuStateBeforeOptions = 'menuPrincipal'; estadoDoJogo = 'menuVolume'; }
             break;
