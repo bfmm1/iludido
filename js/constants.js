@@ -5,8 +5,8 @@ const KILLS_PER_CHARGE = 10;
 const SPECIAL_PROJECTILE_SPEED = 4;
 const SPECIAL_DAMAGE = 100;
 const SPECIAL_EXPLOSION_RADIUS = 250;
-const MAX_VOLUME_MUSICA = 0.2;
-const MAX_VOLUME_TIRO = 0.1;
+const MAX_VOLUME_MUSICA = 0.12;
+const MAX_VOLUME_TIRO = 0.08;
 const BOSS_VOICE_BOOST = 0.3;
 
 // --- Definições de Ondas ---
