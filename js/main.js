@@ -20,18 +20,9 @@ let draggingSlider = null;
 let volumeMusicaSlider = 1.0;
 let volumeEfeitosSlider = 1.0;
 
-const isMobile = isMobileDevice();
-const virtualControls = {
-    left:  { x: 100, y: canvas.height - 100, radius: 50 },
-    right: { x: 220, y: canvas.height - 100, radius: 50 },
-    jump:  { x: 160, y: canvas.height - 200, radius: 50 },
-    shoot: { x: canvas.width - 150, y: canvas.height - 150, radius: 80 },
-    special:{ x: canvas.width - 280, y: canvas.height - 80, radius: 40 },
-    pause: { x: canvas.width - 60, y: 60, radius: 30 }
-};
-
 // --- Funções de Inicialização e Lógica ---
 function inicializarJogo() {
+    pararTodosOsSons(false);
     plataformas = [new Plataforma(0, canvas.height - 40, canvas.width, 40)];
     player = new Player();
     inimigos = []; projeteis = []; projeteisInimigos = []; efeitosVisuais = []; moedas = []; efeitosDeDano = [];
@@ -42,6 +33,7 @@ function inicializarJogo() {
 }
 
 function playIntroAndStartGame() {
+    estadoDoJogo = 'intro';
     const introVideo = document.getElementById('introVideo');
     canvas.style.display = 'none';
     introVideo.style.display = 'block';
@@ -61,6 +53,7 @@ function startGameAfterIntro() {
 }
 
 function iniciarProximaOnda() {
+    if (player.hasFocus) player.focusTimer = 0;
     ondaAtual++;
     estadoDoJogo = 'rodando';
     let defOnda = DEFINICOES_ONDAS[ondaAtual - 1] || {
@@ -75,15 +68,16 @@ function iniciarProximaOnda() {
 }
 
 function checarColisoes() {
-    for (let i = projeteis.length - 1; i >= 0; i--) { const p = projeteis[i]; if (!p) continue; for (let j = inimigos.length - 1; j >= 0; j--) { const inimigo = inimigos[j]; if (isColliding(p, inimigo)) { inimigo.sofrerDano(p.dano); efeitosDeDano.push(new DamageNumber(inimigo.posicao.x + inimigo.largura / 2, inimigo.posicao.y, p.dano)); projeteis.splice(i, 1); break; } } }
+    for (let i = projeteis.length - 1; i >= 0; i--) { const p = projeteis[i]; if (!p) continue; for (let j = inimigos.length - 1; j >= 0; j--) { const inimigo = inimigos[j]; if (isColliding(p, inimigo)) { inimigo.sofrerDano(p.dano); if(player.hasColdEffect) inimigo.slowModifier = Math.max(0.2, inimigo.slowModifier * 0.99); if(player.lifesteal > 0) player.vida = Math.min(player.vidaMax, player.vida + p.dano * player.lifesteal); efeitosDeDano.push(new DamageNumber(inimigo.posicao.x + inimigo.largura / 2, inimigo.posicao.y, p.dano)); if(p.pierceLeft > 0) { p.pierceLeft--; } else { projeteis.splice(i, 1); } break; } } }
     const playerHitbox = { posicao: { x: player.posicao.x + (player.largura * 0.15), y: player.posicao.y + (player.altura * 0.15) }, largura: player.largura * 0.7, altura: player.altura * 0.7 };
     for (let i = projeteisInimigos.length - 1; i >= 0; i--) { const p = projeteisInimigos[i]; if (isColliding(p, playerHitbox)) { player.sofrerDano(p.dano); projeteisInimigos.splice(i, 1); break; } }
-    for (let i = inimigos.length - 1; i >= 0; i--) { const inimigo = inimigos[i]; if (inimigo.vida <= 0) { if (inimigo.tipo === 'boss') { const bossAudios = ['siteclonado', '75', '50', '25']; bossAudios.forEach(name => { if (assets[name]) { assets[name].pause(); assets[name].currentTime = 0; } }); } player.inimigoDerrotado(inimigo.expConcedida, inimigo.tipo); score += inimigo.scoreValue; moedas.push(new Coin(inimigo.posicao.x + inimigo.largura / 2, inimigo.posicao.y)); inimigos.splice(i, 1); } }
-    for (let i = moedas.length - 1; i >= 0; i--) { if (isColliding(player, moedas[i])) { moedas.splice(i, 1); } }
+    for (let i = inimigos.length - 1; i >= 0; i--) { const inimigo = inimigos[i]; if(player.contactDamage > 0 && Date.now() - player.lastContactDamage > 500 && isColliding(player, inimigo)) { inimigo.sofrerDano(player.contactDamage); efeitosDeDano.push(new DamageNumber(inimigo.posicao.x + inimigo.largura / 2, inimigo.posicao.y, player.contactDamage)); player.lastContactDamage = Date.now(); } if (inimigo.vida <= 0) { if (inimigo.tipo === 'boss') { const bossAudios = ['siteclonado', '75', '50', '25']; bossAudios.forEach(name => { if (assets[name]) { assets[name].pause(); assets[name].currentTime = 0; } }); } if (Math.random() < player.healingOrbChance) { efeitosVisuais.push(new HealingOrb(inimigo.posicao.x, inimigo.posicao.y)); } if(player.fragmentationCount > 0) { for(let k=0; k < player.fragmentationCount; k++) { projeteisInimigos.push(new InimigoProjétil(inimigo.posicao.x, inimigo.posicao.y, 5, 'gray', {x: (Math.random()-0.5)*8, y: (Math.random()-0.5)*8}, 5)); } } player.inimigoDerrotado(inimigo.expConcedida, inimigo.tipo, inimigo.scoreValue); moedas.push(new Coin(inimigo.posicao.x + inimigo.largura / 2, inimigo.posicao.y)); inimigos.splice(i, 1); } }
+    for (let i = moedas.length - 1; i >= 0; i--) { if (isColliding(player, moedas[i])) { moedas.splice(i, 1); score += 10; } }
+    for (let i = efeitosVisuais.length - 1; i >= 0; i--) { const efeito = efeitosVisuais[i]; if (efeito instanceof HealingOrb && isColliding(player, efeito)) { player.vida = Math.min(player.vidaMax, player.vida + 10); efeito.remover = true; } }
 }
 
 function update() {
-    if (['gameOver', 'levelUp', 'carregando', 'menuPrincipal', 'menuPoderes', 'menuVolume', 'pausado'].includes(estadoDoJogo)) return;
+    if (['gameOver', 'levelUp', 'carregando', 'menuPrincipal', 'menuPoderes', 'menuVolume', 'pausado', 'intro'].includes(estadoDoJogo)) return;
     if (textoEspecial.timer > 0) { textoEspecial.timer -= 16.67; textoEspecial.alpha = textoEspecial.timer / textoEspecial.duration; }
     if (estadoDoJogo === 'entreOndas') { if (Date.now() >= timerProximaOnda) iniciarProximaOnda(); player.update(); }
     if (estadoDoJogo === 'rodando') { player.update(); if (mouse.pressionado) player.atirar(); inimigos.forEach(i => i.update(player)); checarColisoes(); if (estadoDoJogo === 'levelUp') return; if (inimigos.length === 0) { estadoDoJogo = 'entreOndas'; timerProximaOnda = Date.now() + TEMPO_ENTRE_ONDAS; } }
@@ -137,21 +131,34 @@ function drawVolumeMenu() {
     ctx.fillStyle = '#fff'; ctx.fillText("Voltar", canvas.width / 2, canvas.height - 105);
 }
 
-function drawPowersMenu() { ctx.fillStyle = '#0f0f1e'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = '60px "Courier New", monospace'; ctx.fillText("Lista de Poderes", canvas.width / 2, 100); todosOsUpgrades.forEach((up, i) => { const yPos = 200 + i * 60; ctx.font = '28px "Courier New", monospace'; ctx.fillStyle = '#00ffff'; ctx.fillText(up.nome, canvas.width/2, yPos); ctx.font = '20px "Courier New", monospace'; ctx.fillStyle = '#fff'; ctx.fillText(up.descricao, canvas.width/2, yPos + 25); }); menuButtons.voltar = { x: canvas.width/2 - 150, y: canvas.height - 150, width: 300, height: 70 }; ctx.fillStyle = '#222'; ctx.fillRect(menuButtons.voltar.x, menuButtons.voltar.y, menuButtons.voltar.width, menuButtons.voltar.height); ctx.strokeStyle = '#e63946'; ctx.strokeRect(menuButtons.voltar.x, menuButtons.voltar.y, menuButtons.voltar.width, menuButtons.voltar.height); ctx.fillStyle = '#fff'; ctx.font = '30px "Courier New", monospace'; ctx.fillText("Voltar", canvas.width / 2, canvas.height - 105); }
+function drawPowersMenu() {
+    ctx.fillStyle = '#0f0f1e'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = '60px "Courier New", monospace';
+    ctx.fillText("Lista de Poderes", canvas.width / 2, 100);
+    let yPos = 150;
+    todosOsUpgrades.forEach((up) => {
+        if (up.unimplemented) return;
+        ctx.font = '24px "Courier New", monospace';
+        ctx.fillStyle = '#00ffff';
+        ctx.fillText(up.nome, canvas.width / 2, yPos);
+        ctx.font = '18px "Courier New", monospace';
+        ctx.fillStyle = '#fff';
+        ctx.fillText(up.descricao, canvas.width / 2, yPos + 22);
+        yPos += 50;
+    });
+    menuButtons.voltar = { x: canvas.width/2 - 150, y: canvas.height - 150, width: 300, height: 70 };
+    ctx.fillStyle = '#222'; ctx.fillRect(menuButtons.voltar.x, menuButtons.voltar.y, menuButtons.voltar.width, menuButtons.voltar.height);
+    ctx.strokeStyle = '#e63946'; ctx.strokeRect(menuButtons.voltar.x, menuButtons.voltar.y, menuButtons.voltar.width, menuButtons.voltar.height);
+    ctx.fillStyle = '#fff'; ctx.font = '30px "Courier New", monospace';
+    ctx.fillText("Voltar", canvas.width / 2, canvas.height - 105);
+}
 
 function drawTotalEnemyHealthBar() { if (!inimigos || inimigos.length === 0 || estadoDoJogo !== 'rodando') return; let totalVida = 0; let totalVidaMax = 0; inimigos.forEach(inimigo => { if (inimigo.tipo !== 'boss') { totalVida += inimigo.vida; totalVidaMax += inimigo.vidaMax; } }); if (totalVidaMax > 0) { const barWidth = 400; const barX = canvas.width / 2 - barWidth / 2; const percent = totalVida / totalVidaMax; ctx.fillStyle = '#111'; ctx.fillRect(barX, 10, barWidth, 15); ctx.fillStyle = 'red'; ctx.fillRect(barX, 10, barWidth * percent, 15); ctx.strokeStyle = '#555'; ctx.strokeRect(barX, 10, barWidth, 15); } }
-
 function drawGameUI() { const p = player; ctx.fillStyle = '#333'; ctx.fillRect(20, 20, 250, 25); ctx.fillStyle = '#ff4757'; ctx.fillRect(20, 20, (p.vida / p.vidaMax) * 250, 25); ctx.fillStyle = '#333'; ctx.fillRect(20, 55, 250, 20); ctx.fillStyle = '#f1c40f'; ctx.fillRect(20, 55, (p.exp / p.expParaProximoNivel) * 250, 20); ctx.strokeStyle = '#fff'; ctx.strokeRect(20, 20, 250, 25); ctx.strokeRect(20, 55, 250, 20); ctx.fillStyle = '#fff'; ctx.font = '16px Arial'; ctx.fillText(`HP: ${Math.ceil(p.vida)} / ${p.vidaMax}`, 30, 38); ctx.font = '14px Arial'; ctx.fillText(`EXP: ${p.exp} / ${p.expParaProximoNivel}`, 30, 70); ctx.font = '24px Arial'; ctx.fillText(`Nível: ${p.nivel}`, 290, 45); ctx.textAlign = 'right'; ctx.font = '24px Arial'; ctx.fillStyle = '#fff'; ctx.fillText('Especial [F]', canvas.width - 20, 40); ctx.font = '22px Arial'; ctx.fillStyle = '#f1c40f'; ctx.fillText(`Pontos: ${score}`, canvas.width - 20, 70); for (let i = 0; i < p.specialCharges; i++) drawImageWithFallback(assets.kenner, canvas.width - 60 - (i * 45), 85, 25, 40, 'magenta'); if (p.specialCharges < p.maxSpecialCharges) { ctx.fillStyle = '#555'; ctx.fillRect(canvas.width - 20 - 150, 135, 150, 10); ctx.fillStyle = '#00ffff'; ctx.fillRect(canvas.width - 20 - 150, 135, (p.specialChargeProgress / KILLS_PER_CHARGE) * 150, 10); } ctx.textAlign = 'center'; ctx.font = '32px "Courier New", monospace'; if (estadoDoJogo === 'rodando') { let eBoss = inimigos.find(i => i.tipo === 'boss'); if (eBoss) { ctx.fillStyle = '#d00000'; ctx.fillText(`!!! ONDA DO CHEFE !!!`, canvas.width / 2, 80); } else { ctx.fillStyle = '#e63946'; ctx.fillText(`ONDA ${ondaAtual}`, canvas.width / 2, 50); } } else if (estadoDoJogo === 'entreOndas') { const tempo = Math.ceil((timerProximaOnda - Date.now()) / 1000); ctx.fillStyle = '#00ffff'; ctx.fillText(ondaAtual === 0 ? `O jogo começa em: ${tempo}s` : `Próxima onda em: ${tempo}s`, canvas.width / 2, 50); } if (textoEspecial.timer > 0) { ctx.font = '50px "Courier New", monospace'; ctx.fillStyle = `rgba(255, 255, 0, ${textoEspecial.alpha})`; ctx.fillText(textoEspecial.texto, canvas.width / 2, canvas.height / 2); } }
-
 function drawLevelUpScreen() { ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#fff'; ctx.font = '60px "Courier New", monospace'; ctx.textAlign = 'center'; ctx.fillText('LEVEL UP!', canvas.width / 2, 150); ctx.font = '30px "Courier New", monospace'; ctx.fillText('Escolha um upgrade:', canvas.width / 2, 220); opcoesDeUpgrade.forEach((up, i) => { up.box = { x: canvas.width / 2 - 250, y: 280 + i * 120, width: 500, height: 100 }; ctx.fillStyle = '#222'; ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 3; ctx.fillRect(up.box.x, up.box.y, up.box.width, up.box.height); ctx.strokeRect(up.box.x, up.box.y, up.box.width, up.box.height); ctx.fillStyle = '#00ffff'; ctx.font = '28px "Courier New", monospace'; ctx.fillText(up.nome, canvas.width / 2, up.box.y + 45); ctx.fillStyle = '#fff'; ctx.font = '20px "Courier New", monospace'; ctx.fillText(up.descricao, canvas.width / 2, up.box.y + 75); }); }
-
 function drawGameOverScreen() { ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#e63946'; ctx.font = '80px "Courier New", monospace'; ctx.textAlign = 'center'; ctx.fillText('FIM DE JOGO', canvas.width / 2, canvas.height / 2 - 50); ctx.fillStyle = '#fff'; ctx.font = '30px "Courier New", monospace'; ctx.fillText(`Você sobreviveu até a Onda ${ondaAtual}`, canvas.width / 2, canvas.height / 2 + 20); ctx.fillText(`Pontuação Final: ${score}`, canvas.width / 2, canvas.height / 2 + 60); ctx.fillText('Clique para voltar ao menu', canvas.width / 2, canvas.height / 2 + 100); }
-
-function drawVirtualControls() { ctx.globalAlpha = 0.5; ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = '30px Arial'; ctx.beginPath(); ctx.arc(virtualControls.left.x, virtualControls.left.y, virtualControls.left.radius, 0, 2 * Math.PI); ctx.fill(); ctx.beginPath(); ctx.arc(virtualControls.right.x, virtualControls.right.y, virtualControls.right.radius, 0, 2 * Math.PI); ctx.fill(); ctx.beginPath(); ctx.arc(virtualControls.jump.x, virtualControls.jump.y, virtualControls.jump.radius, 0, 2 * Math.PI); ctx.fill(); ctx.beginPath(); ctx.arc(virtualControls.shoot.x, virtualControls.shoot.y, virtualControls.shoot.radius, 0, 2 * Math.PI); ctx.fill(); ctx.beginPath(); ctx.arc(virtualControls.special.x, virtualControls.special.y, virtualControls.special.radius, 0, 2 * Math.PI); ctx.fill(); ctx.beginPath(); ctx.arc(virtualControls.pause.x, virtualControls.pause.y, virtualControls.pause.radius, 0, 2 * Math.PI); ctx.fill(); ctx.fillStyle = '#000'; ctx.fillText('<', virtualControls.left.x, virtualControls.left.y + 10); ctx.fillText('>', virtualControls.right.x, virtualControls.right.y + 10); ctx.fillText('↑', virtualControls.jump.x, virtualControls.jump.y + 10); ctx.fillText('ATIRAR', virtualControls.shoot.x, virtualControls.shoot.y + 10); ctx.font = '24px Arial'; ctx.fillText('F', virtualControls.special.x, virtualControls.special.y + 8); ctx.fillRect(virtualControls.pause.x - 10, virtualControls.pause.y - 12, 8, 24); ctx.fillRect(virtualControls.pause.x + 2, virtualControls.pause.y - 12, 8, 24); ctx.globalAlpha = 1.0; }
-
 function drawPauseMenu() { ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = '80px "Courier New", monospace'; ctx.fillText("PAUSADO", canvas.width / 2, 250); menuButtons.continuar = { x: canvas.width/2 - 200, y: 350, width: 400, height: 70 }; menuButtons.opcoesPausa = { x: canvas.width/2 - 200, y: 450, width: 400, height: 70 }; menuButtons.sair = { x: canvas.width/2 - 200, y: 550, width: 400, height: 70 }; ctx.fillStyle = '#222'; ctx.fillRect(menuButtons.continuar.x, menuButtons.continuar.y, menuButtons.continuar.width, menuButtons.continuar.height); ctx.fillRect(menuButtons.opcoesPausa.x, menuButtons.opcoesPausa.y, menuButtons.opcoesPausa.width, menuButtons.opcoesPausa.height); ctx.fillRect(menuButtons.sair.x, menuButtons.sair.y, menuButtons.sair.width, menuButtons.sair.height); ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 3; ctx.strokeRect(menuButtons.continuar.x, menuButtons.continuar.y, menuButtons.continuar.width, menuButtons.continuar.height); ctx.strokeRect(menuButtons.opcoesPausa.x, menuButtons.opcoesPausa.y, menuButtons.opcoesPausa.width, menuButtons.opcoesPausa.height); ctx.strokeStyle = '#e63946'; ctx.strokeRect(menuButtons.sair.x, menuButtons.sair.y, menuButtons.sair.width, menuButtons.sair.height); ctx.fillStyle = '#fff'; ctx.font = '30px "Courier New", monospace'; ctx.fillText("Continuar", canvas.width / 2, 395); ctx.fillText("Opções de Volume", canvas.width / 2, 495); ctx.fillText("Voltar ao Menu", canvas.width / 2, 595); }
 
-// <<< NOVO: Função para desenhar o mundo do jogo
 function drawGameWorld() {
     drawImageWithFallback(assets.fase, 0, 0, canvas.width, canvas.height, '#0f0f1e');
     plataformas.forEach(p => p.draw());
@@ -171,12 +178,12 @@ function draw() {
         case 'menuPrincipal': drawMainMenu(); break;
         case 'menuPoderes': drawPowersMenu(); break;
         case 'menuVolume': drawVolumeMenu(); break;
+        case 'intro': /* Não desenha nada, o vídeo está por cima */ break;
         case 'rodando': case 'entreOndas': case 'pausado':
             if (player) {
                 drawGameWorld();
                 drawGameUI();
                 if (estadoDoJogo !== 'pausado') drawTotalEnemyHealthBar();
-                if (isMobile) drawVirtualControls();
                 if (estadoDoJogo === 'pausado') drawPauseMenu();
             }
             break;
@@ -193,12 +200,19 @@ function draw() {
 }
 
 function gameLoop() {
-    if (!themeMusicStarted && estadoDoJogo !== 'carregando') {
+    // Tenta iniciar a música tema uma vez
+    if (estadoDoJogo !== 'carregando' && !themeMusicStarted) {
         if (assets.theme) {
             assets.theme.loop = true;
             assets.theme.volume = volumeMusicaSlider * MAX_VOLUME_MUSICA;
             const promise = assets.theme.play();
-            if (promise !== undefined) { promise.then(() => { themeMusicStarted = true; }).catch(() => {}); }
+            if (promise !== undefined) {
+                promise.then(() => {
+                    themeMusicStarted = true;
+                }).catch(() => {
+                    // Autoplay bloqueado, o clique do usuário irá iniciar.
+                });
+            }
         }
     }
     update();
@@ -206,7 +220,18 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-window.addEventListener('keydown', (e) => { const key = e.key.toLowerCase(); if (estadoDoJogo === 'pausado' && key === 'escape') { estadoDoJogo = gameStateBeforePause; } else if (['rodando', 'entreOndas'].includes(estadoDoJogo)) { if (key === 'a') teclas.a.pressionada = true; else if (key === 'd') teclas.d.pressionada = true; else if (key === ' ') player.pular(); else if (key === 'f') player.usarEspecial(); else if (key === 'escape') { gameStateBeforePause = estadoDoJogo; estadoDoJogo = 'pausado'; } } });
+window.addEventListener('keydown', (e) => {
+    const key = e.key.toLowerCase();
+    if (estadoDoJogo === 'pausado' && key === 'escape') { estadoDoJogo = gameStateBeforePause; }
+    else if (['rodando', 'entreOndas'].includes(estadoDoJogo)) {
+        if (key === 'a') teclas.a.pressionada = true;
+        else if (key === 'd') teclas.d.pressionada = true;
+        else if (key === ' ') player.pular();
+        else if (key === 'f') player.usarEspecial();
+        else if (key === 'escape') { gameStateBeforePause = estadoDoJogo; estadoDoJogo = 'pausado'; }
+    }
+});
+
 window.addEventListener('keyup', (e) => { const key = e.key.toLowerCase(); if (key === 'a') teclas.a.pressionada = false; else if (key === 'd') teclas.d.pressionada = false; });
 canvas.addEventListener('mousemove', (e) => { const rect = canvas.getBoundingClientRect(); mouse.x = e.clientX - rect.left; mouse.y = e.clientY - rect.top; if (draggingSlider) { const slider = menuButtons[draggingSlider === 'musica' ? 'sliderMusica' : 'sliderEfeitos']; let newValue = (mouse.x - slider.x) / slider.width; newValue = Math.max(0, Math.min(1, newValue)); if (draggingSlider === 'musica') { volumeMusicaSlider = newValue; if (assets.theme) assets.theme.volume = volumeMusicaSlider * MAX_VOLUME_MUSICA; } else { volumeEfeitosSlider = newValue; } } });
 canvas.addEventListener('mouseup', () => { mouse.pressionado = false; draggingSlider = null; });
@@ -227,9 +252,8 @@ canvas.addEventListener('mousedown', () => {
             break;
         case 'rodando': case 'entreOndas': mouse.pressionado = true; break;
         case 'gameOver': pararTodosOsSons(); estadoDoJogo = 'menuPrincipal'; break;
-        case 'levelUp': opcoesDeUpgrade.forEach(up => { if (isPointInRect(mouse, up.box)) { up.aplicar(player); estadoDoJogo = inimigos.length === 0 ? 'entreOndas' : 'rodando'; if (estadoDoJogo === 'entreOndas') timerProximaOnda = Date.now() + TEMPO_ENTRE_ONDAS; } }); break;
+        case 'levelUp': opcoesDeUpgrade.forEach(up => { if (isPointInRect(mouse, up.box)) { player.aplicarUpgrade(up); estadoDoJogo = inimigos.length === 0 ? 'entreOndas' : 'rodando'; if (estadoDoJogo === 'entreOndas') timerProximaOnda = Date.now() + TEMPO_ENTRE_ONDAS; } }); break;
     }
 });
-function handleTouch(e) { if (!['rodando', 'entreOndas'].includes(estadoDoJogo)) return; e.preventDefault(); teclas.a.pressionada = false; teclas.d.pressionada = false; mouse.pressionado = false; for (let i = 0; i < e.touches.length; i++) { const touch = e.touches[i]; const touchPos = { x: touch.clientX - canvas.getBoundingClientRect().left, y: touch.clientY - canvas.getBoundingClientRect().top }; if (isPointInCircle(touchPos, virtualControls.left)) teclas.a.pressionada = true; if (isPointInCircle(touchPos, virtualControls.right)) teclas.d.pressionada = true; if (isPointInCircle(touchPos, virtualControls.jump)) player.pular(); if (isPointInCircle(touchPos, virtualControls.special)) player.usarEspecial(); if (isPointInCircle(touchPos, virtualControls.shoot)) { mouse.x = touchPos.x; mouse.y = touchPos.y; mouse.pressionado = true; } if (isPointInCircle(touchPos, virtualControls.pause)) { gameStateBeforePause = estadoDoJogo; estadoDoJogo = 'pausado'; } } }
-if (isMobile) { canvas.addEventListener('touchstart', handleTouch); canvas.addEventListener('touchmove', handleTouch); canvas.addEventListener('touchend', handleTouch); }
+
 gameLoop();
