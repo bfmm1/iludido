@@ -1,5 +1,5 @@
 const assets = {};
-const nomesImagens = ['playerc', 'playerd', 'playere', 'inimigo1', 'inimigo2', 'boss', 'kenner', 'dinheiro', 'coin', 'fundo']; // <<< NOVO
+const nomesImagens = ['playerc', 'playerd', 'playere', 'inimigo1', 'inimigo2', 'boss', 'kenner', 'dinheiro', 'coin', 'fundo', 'fase']; // <<< NOVO
 const nomesAudios = ['siteclonado', '75', '50', '25', 'tiro', 'theme'];
 
 let assetsCarregados = 0;

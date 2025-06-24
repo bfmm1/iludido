@@ -50,7 +50,6 @@ function playIntroAndStartGame() {
         console.error("Erro ao tocar o vídeo de introdução:", e);
         startGameAfterIntro();
     });
-    
     introVideo.onended = startGameAfterIntro;
 }
 
@@ -99,26 +98,18 @@ function update() {
 function drawMainMenu() {
     drawImageWithFallback(assets.fundo, 0, 0, canvas.width, canvas.height, '#0f0f1e');
     ctx.textAlign = 'center';
-
-    // <<< MUDANÇA: Coordenadas dos botões ajustadas
-    const buttonX = canvas.width - 400;
-    const buttonYStart = 400;
-    const buttonYSpacing = 100;
-    
+    const buttonX = canvas.width - 400; const buttonYStart = 400; const buttonYSpacing = 100;
     menuButtons.iniciar = { x: buttonX, y: buttonYStart, width: 300, height: 70 };
     menuButtons.poderes = { x: buttonX, y: buttonYStart + buttonYSpacing, width: 300, height: 70 };
     menuButtons.volume = { x: buttonX, y: buttonYStart + buttonYSpacing * 2, width: 300, height: 70 };
-
     ctx.fillStyle = '#222';
     ctx.fillRect(menuButtons.iniciar.x, menuButtons.iniciar.y, menuButtons.iniciar.width, menuButtons.iniciar.height);
     ctx.fillRect(menuButtons.poderes.x, menuButtons.poderes.y, menuButtons.poderes.width, menuButtons.poderes.height);
     ctx.fillRect(menuButtons.volume.x, menuButtons.volume.y, menuButtons.volume.width, menuButtons.volume.height);
-    
     ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 3;
     ctx.strokeRect(menuButtons.iniciar.x, menuButtons.iniciar.y, menuButtons.iniciar.width, menuButtons.iniciar.height);
     ctx.strokeRect(menuButtons.poderes.x, menuButtons.poderes.y, menuButtons.poderes.width, menuButtons.poderes.height);
     ctx.strokeRect(menuButtons.volume.x, menuButtons.volume.y, menuButtons.volume.width, menuButtons.volume.height);
-
     ctx.fillStyle = '#fff'; ctx.font = '30px "Courier New", monospace';
     ctx.fillText("Iniciar Jogo", buttonX + 150, buttonYStart + 45);
     ctx.fillText("Poderes", buttonX + 150, buttonYStart + buttonYSpacing + 45);
@@ -148,7 +139,7 @@ function drawVolumeMenu() {
 
 function drawPowersMenu() { ctx.fillStyle = '#0f0f1e'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = '60px "Courier New", monospace'; ctx.fillText("Lista de Poderes", canvas.width / 2, 100); todosOsUpgrades.forEach((up, i) => { const yPos = 200 + i * 60; ctx.font = '28px "Courier New", monospace'; ctx.fillStyle = '#00ffff'; ctx.fillText(up.nome, canvas.width/2, yPos); ctx.font = '20px "Courier New", monospace'; ctx.fillStyle = '#fff'; ctx.fillText(up.descricao, canvas.width/2, yPos + 25); }); menuButtons.voltar = { x: canvas.width/2 - 150, y: canvas.height - 150, width: 300, height: 70 }; ctx.fillStyle = '#222'; ctx.fillRect(menuButtons.voltar.x, menuButtons.voltar.y, menuButtons.voltar.width, menuButtons.voltar.height); ctx.strokeStyle = '#e63946'; ctx.strokeRect(menuButtons.voltar.x, menuButtons.voltar.y, menuButtons.voltar.width, menuButtons.voltar.height); ctx.fillStyle = '#fff'; ctx.font = '30px "Courier New", monospace'; ctx.fillText("Voltar", canvas.width / 2, canvas.height - 105); }
 
-function drawTotalEnemyHealthBar() { if (inimigos.length === 0 || estadoDoJogo !== 'rodando') return; let totalVida = 0; let totalVidaMax = 0; inimigos.forEach(inimigo => { if (inimigo.tipo !== 'boss') { totalVida += inimigo.vida; totalVidaMax += inimigo.vidaMax; } }); if (totalVidaMax > 0) { const barWidth = 400; const barX = canvas.width / 2 - barWidth / 2; const percent = totalVida / totalVidaMax; ctx.fillStyle = '#111'; ctx.fillRect(barX, 10, barWidth, 15); ctx.fillStyle = 'red'; ctx.fillRect(barX, 10, barWidth * percent, 15); ctx.strokeStyle = '#555'; ctx.strokeRect(barX, 10, barWidth, 15); } }
+function drawTotalEnemyHealthBar() { if (!inimigos || inimigos.length === 0 || estadoDoJogo !== 'rodando') return; let totalVida = 0; let totalVidaMax = 0; inimigos.forEach(inimigo => { if (inimigo.tipo !== 'boss') { totalVida += inimigo.vida; totalVidaMax += inimigo.vidaMax; } }); if (totalVidaMax > 0) { const barWidth = 400; const barX = canvas.width / 2 - barWidth / 2; const percent = totalVida / totalVidaMax; ctx.fillStyle = '#111'; ctx.fillRect(barX, 10, barWidth, 15); ctx.fillStyle = 'red'; ctx.fillRect(barX, 10, barWidth * percent, 15); ctx.strokeStyle = '#555'; ctx.strokeRect(barX, 10, barWidth, 15); } }
 
 function drawGameUI() { const p = player; ctx.fillStyle = '#333'; ctx.fillRect(20, 20, 250, 25); ctx.fillStyle = '#ff4757'; ctx.fillRect(20, 20, (p.vida / p.vidaMax) * 250, 25); ctx.fillStyle = '#333'; ctx.fillRect(20, 55, 250, 20); ctx.fillStyle = '#f1c40f'; ctx.fillRect(20, 55, (p.exp / p.expParaProximoNivel) * 250, 20); ctx.strokeStyle = '#fff'; ctx.strokeRect(20, 20, 250, 25); ctx.strokeRect(20, 55, 250, 20); ctx.fillStyle = '#fff'; ctx.font = '16px Arial'; ctx.fillText(`HP: ${Math.ceil(p.vida)} / ${p.vidaMax}`, 30, 38); ctx.font = '14px Arial'; ctx.fillText(`EXP: ${p.exp} / ${p.expParaProximoNivel}`, 30, 70); ctx.font = '24px Arial'; ctx.fillText(`Nível: ${p.nivel}`, 290, 45); ctx.textAlign = 'right'; ctx.font = '24px Arial'; ctx.fillStyle = '#fff'; ctx.fillText('Especial [F]', canvas.width - 20, 40); ctx.font = '22px Arial'; ctx.fillStyle = '#f1c40f'; ctx.fillText(`Pontos: ${score}`, canvas.width - 20, 70); for (let i = 0; i < p.specialCharges; i++) drawImageWithFallback(assets.kenner, canvas.width - 60 - (i * 45), 85, 25, 40, 'magenta'); if (p.specialCharges < p.maxSpecialCharges) { ctx.fillStyle = '#555'; ctx.fillRect(canvas.width - 20 - 150, 135, 150, 10); ctx.fillStyle = '#00ffff'; ctx.fillRect(canvas.width - 20 - 150, 135, (p.specialChargeProgress / KILLS_PER_CHARGE) * 150, 10); } ctx.textAlign = 'center'; ctx.font = '32px "Courier New", monospace'; if (estadoDoJogo === 'rodando') { let eBoss = inimigos.find(i => i.tipo === 'boss'); if (eBoss) { ctx.fillStyle = '#d00000'; ctx.fillText(`!!! ONDA DO CHEFE !!!`, canvas.width / 2, 80); } else { ctx.fillStyle = '#e63946'; ctx.fillText(`ONDA ${ondaAtual}`, canvas.width / 2, 50); } } else if (estadoDoJogo === 'entreOndas') { const tempo = Math.ceil((timerProximaOnda - Date.now()) / 1000); ctx.fillStyle = '#00ffff'; ctx.fillText(ondaAtual === 0 ? `O jogo começa em: ${tempo}s` : `Próxima onda em: ${tempo}s`, canvas.width / 2, 50); } if (textoEspecial.timer > 0) { ctx.font = '50px "Courier New", monospace'; ctx.fillStyle = `rgba(255, 255, 0, ${textoEspecial.alpha})`; ctx.fillText(textoEspecial.texto, canvas.width / 2, canvas.height / 2); } }
 
@@ -160,6 +151,19 @@ function drawVirtualControls() { ctx.globalAlpha = 0.5; ctx.fillStyle = '#fff'; 
 
 function drawPauseMenu() { ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.font = '80px "Courier New", monospace'; ctx.fillText("PAUSADO", canvas.width / 2, 250); menuButtons.continuar = { x: canvas.width/2 - 200, y: 350, width: 400, height: 70 }; menuButtons.opcoesPausa = { x: canvas.width/2 - 200, y: 450, width: 400, height: 70 }; menuButtons.sair = { x: canvas.width/2 - 200, y: 550, width: 400, height: 70 }; ctx.fillStyle = '#222'; ctx.fillRect(menuButtons.continuar.x, menuButtons.continuar.y, menuButtons.continuar.width, menuButtons.continuar.height); ctx.fillRect(menuButtons.opcoesPausa.x, menuButtons.opcoesPausa.y, menuButtons.opcoesPausa.width, menuButtons.opcoesPausa.height); ctx.fillRect(menuButtons.sair.x, menuButtons.sair.y, menuButtons.sair.width, menuButtons.sair.height); ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 3; ctx.strokeRect(menuButtons.continuar.x, menuButtons.continuar.y, menuButtons.continuar.width, menuButtons.continuar.height); ctx.strokeRect(menuButtons.opcoesPausa.x, menuButtons.opcoesPausa.y, menuButtons.opcoesPausa.width, menuButtons.opcoesPausa.height); ctx.strokeStyle = '#e63946'; ctx.strokeRect(menuButtons.sair.x, menuButtons.sair.y, menuButtons.sair.width, menuButtons.sair.height); ctx.fillStyle = '#fff'; ctx.font = '30px "Courier New", monospace'; ctx.fillText("Continuar", canvas.width / 2, 395); ctx.fillText("Opções de Volume", canvas.width / 2, 495); ctx.fillText("Voltar ao Menu", canvas.width / 2, 595); }
 
+// <<< NOVO: Função para desenhar o mundo do jogo
+function drawGameWorld() {
+    drawImageWithFallback(assets.fase, 0, 0, canvas.width, canvas.height, '#0f0f1e');
+    plataformas.forEach(p => p.draw());
+    moedas.forEach(c => c.draw());
+    projeteis.forEach(p => p.draw());
+    projeteisInimigos.forEach(p => p.draw());
+    player.draw();
+    inimigos.forEach(i => i.draw());
+    efeitosVisuais.forEach(e => e.draw());
+    efeitosDeDano.forEach(d => d.draw());
+}
+
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     switch(estadoDoJogo) {
@@ -169,16 +173,16 @@ function draw() {
         case 'menuVolume': drawVolumeMenu(); break;
         case 'rodando': case 'entreOndas': case 'pausado':
             if (player) {
-                plataformas.forEach(p => p.draw()); moedas.forEach(c => c.draw()); projeteis.forEach(p => p.draw()); projeteisInimigos.forEach(p => p.draw());
-                player.draw(); inimigos.forEach(i => i.draw()); efeitosVisuais.forEach(e => e.draw()); efeitosDeDano.forEach(d => d.draw());
-                drawGameUI(); drawTotalEnemyHealthBar(); if (isMobile) drawVirtualControls();
+                drawGameWorld();
+                drawGameUI();
+                if (estadoDoJogo !== 'pausado') drawTotalEnemyHealthBar();
+                if (isMobile) drawVirtualControls();
+                if (estadoDoJogo === 'pausado') drawPauseMenu();
             }
-            if (estadoDoJogo === 'pausado') drawPauseMenu();
             break;
         case 'levelUp':
             if (player) {
-                plataformas.forEach(p => p.draw()); moedas.forEach(c => c.draw()); projeteis.forEach(p => p.draw()); projeteisInimigos.forEach(p => p.draw());
-                player.draw(); inimigos.forEach(i => i.draw()); efeitosVisuais.forEach(e => e.draw()); efeitosDeDano.forEach(d => d.draw());
+                drawGameWorld();
                 drawGameUI();
             }
             drawLevelUpScreen();
@@ -194,9 +198,7 @@ function gameLoop() {
             assets.theme.loop = true;
             assets.theme.volume = volumeMusicaSlider * MAX_VOLUME_MUSICA;
             const promise = assets.theme.play();
-            if (promise !== undefined) {
-                promise.then(() => { themeMusicStarted = true; }).catch(() => {});
-            }
+            if (promise !== undefined) { promise.then(() => { themeMusicStarted = true; }).catch(() => {}); }
         }
     }
     update();
@@ -204,18 +206,7 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-window.addEventListener('keydown', (e) => {
-    const key = e.key.toLowerCase();
-    if (estadoDoJogo === 'pausado' && key === 'escape') { estadoDoJogo = gameStateBeforePause; }
-    else if (['rodando', 'entreOndas'].includes(estadoDoJogo)) {
-        if (key === 'a') teclas.a.pressionada = true;
-        else if (key === 'd') teclas.d.pressionada = true;
-        else if (key === ' ') player.pular();
-        else if (key === 'f') player.usarEspecial();
-        else if (key === 'escape') { gameStateBeforePause = estadoDoJogo; estadoDoJogo = 'pausado'; }
-    }
-});
-
+window.addEventListener('keydown', (e) => { const key = e.key.toLowerCase(); if (estadoDoJogo === 'pausado' && key === 'escape') { estadoDoJogo = gameStateBeforePause; } else if (['rodando', 'entreOndas'].includes(estadoDoJogo)) { if (key === 'a') teclas.a.pressionada = true; else if (key === 'd') teclas.d.pressionada = true; else if (key === ' ') player.pular(); else if (key === 'f') player.usarEspecial(); else if (key === 'escape') { gameStateBeforePause = estadoDoJogo; estadoDoJogo = 'pausado'; } } });
 window.addEventListener('keyup', (e) => { const key = e.key.toLowerCase(); if (key === 'a') teclas.a.pressionada = false; else if (key === 'd') teclas.d.pressionada = false; });
 canvas.addEventListener('mousemove', (e) => { const rect = canvas.getBoundingClientRect(); mouse.x = e.clientX - rect.left; mouse.y = e.clientY - rect.top; if (draggingSlider) { const slider = menuButtons[draggingSlider === 'musica' ? 'sliderMusica' : 'sliderEfeitos']; let newValue = (mouse.x - slider.x) / slider.width; newValue = Math.max(0, Math.min(1, newValue)); if (draggingSlider === 'musica') { volumeMusicaSlider = newValue; if (assets.theme) assets.theme.volume = volumeMusicaSlider * MAX_VOLUME_MUSICA; } else { volumeEfeitosSlider = newValue; } } });
 canvas.addEventListener('mouseup', () => { mouse.pressionado = false; draggingSlider = null; });
